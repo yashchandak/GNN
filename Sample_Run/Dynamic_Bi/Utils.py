@@ -34,7 +34,7 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
     # Pulled from https://github.com/tensorflow/tensorflow/blob/master/tensorflow/models/rnn/ptb/reader.py#L82 and modified
     raw_data = np.array(raw_data, dtype=np.int32)
     data_len = len(raw_data)
-    batch_len = int(data_len // batch_size)
+    batch_len = data_len // batch_size
     data = np.zeros([batch_size, batch_len], dtype=np.int32)
 
     #[ASSUMPTION] label has at least one node per label
@@ -45,28 +45,37 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
         data[i] = raw_data[batch_len * i:batch_len * (i + 1)]
     if shuffle:
         indices = np.random.permutation(len(data))
-        data = data[indices]
-    epoch_size = (batch_len - 1) // num_steps
-    if epoch_size == 0:
-        raise ValueError("epoch_size == 0, decrease batch_size or num_steps")
+        #data = data[indices]
+    epoch_size = batch_len//(num_steps+1)
+    if batch_len % (num_steps+1) != 0:
+        raise ValueError("Change batch size, Each batch length is not divisible by (num_steps+1)")
 
     for i in range(epoch_size):
-        x = data[:, i * num_steps:(i + 1) * num_steps]
-        y = data[:, i * num_steps + 1:(i + 1) * num_steps + 1]
+        #print("Ptb Iterator: ",data_len, batch_len, epoch_size)
+        #print(data[0])
+        x = data[:, i * (num_steps+1)    : (i + 1) * (num_steps+1) - 1]
+        y = data[:, i * (num_steps+1) + 1: (i + 1) * (num_steps+1)]
 
         x_labels = []
+        seq_len = [] #maintains true length of sequence, i.e without zero padding
         for seq in x:
             temp = []
+            count = 0
             for item in seq:
                 z = np.zeros(label_len)
                 z[label.get(item, [0])] = 1
+                if label.get(item,False):
+                        count +=1
+
                 temp.append(z)
+
+            seq_len.append(count+1) #1 extra time step since sequences starts with <EOS>    
             x_labels.append(temp)
 
         #convert from (batch x step x label_size) to (step x batch x label_size)
         x_labels = np.swapaxes(x_labels, 0,1)
         
-        yield (x, y, np.array(x_labels))
+        yield (x, y, np.array(x_labels), seq_len)
 
 ###########################################
 

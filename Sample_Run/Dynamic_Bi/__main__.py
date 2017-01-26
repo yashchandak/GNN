@@ -35,18 +35,18 @@ class RNNLM_v1(object):
         # Build model
         self.arch = self.add_network(config)
         self.inputs = self.arch.embedding(self.data_placeholder)
-        self.rnn_outputs = self.arch.predict(self.inputs,self.keep_prob)
+        self.rnn_outputs = self.arch.predict(self.inputs,self.keep_prob, self.seq_len)
         self.outputs = self.arch.projection(self.rnn_outputs)
 
         # casting to handle numerical stability
         self.predictions_next = [tf.nn.softmax(tf.cast(o, 'float64')) for o in self.outputs[0]]
-        #self.predictions_label= [tf.sigmoid(tf.cast(o, 'float64')) for o in self.outputs[1]]
+        self.predictions_label= [tf.sigmoid(tf.cast(o, 'float64')) for o in self.outputs[1]]
 
         # Reshape the output into len(vocab) sized chunks - the -1 says as many as
         # needed to evenly divide
         output_next = tf.reshape(tf.concat(1, self.outputs[0]), [-1, self.config.data_sets._len_vocab])
-        output_label = tf.reshape(tf.concat(1, self.outputs[1]), [-1, self.config.data_sets._len_labels])
-        #output_label = tf.reshape(tf.concat(1, self.outputs[1]), [self.config.batch_size*self.config.num_steps, self.config.data_sets._len_labels])
+        #output_label = tf.reshape(tf.concat(1, self.outputs[1]), [-1, self.config.data_sets._len_labels])
+        output_label =  self.outputs[1]
         
         self.loss = self.arch.loss([output_next, output_label], self.label_placeholder, self.label_2_placeholder, self.inputs)
         self.optimizer = self.config.solver._parameters['optimizer']
@@ -65,7 +65,7 @@ class RNNLM_v1(object):
         debug = self.config.debug
         if debug:
             print('##############--------- Debug mode ')
-            num_debug = 1024
+            num_debug = (self.config.num_steps+1)*128
             self.data_sets.train._x = self.data_sets.train._x[:num_debug]
             self.data_sets.validation._x  = self.data_sets.validation._x[:num_debug]
             #self.data_sets.test_x  = self.data_sets.test_x[:num_debug]
@@ -86,15 +86,17 @@ class RNNLM_v1(object):
 	#self.label_placeholder = tf.placeholder(tf.int32,shape=[None,self.config.num_steps],name='Target')
         self.data_placeholder = tf.placeholder(tf.int32,shape=[None,self.config.num_steps], name='Input')
         self.label_placeholder = tf.placeholder(tf.int32,name='Target')
-        self.label_2_placeholder = tf.placeholder(tf.int32,name='Target')
-        self.keep_prob = tf.placeholder(tf.float32)
+        self.label_2_placeholder = tf.placeholder(tf.int32,name='Target_label')
+        self.keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+        self.seq_len = tf.placeholder(tf.int32, shape=[None], name='Seq_len')
     	#self.metrics = tf.placeholder(tf.float32,shape=(len(self.config.metrics),))
 
-    def create_feed_dict(self, input_batch, label_batch, label_batch_2):
+    def create_feed_dict(self, input_batch, label_batch, label_batch_2, seq_len):
         feed_dict = {
             self.data_placeholder: input_batch,
             self.label_placeholder: label_batch,
-            self.label_2_placeholder: label_batch_2
+            self.label_2_placeholder: label_batch_2,
+            self.seq_len: seq_len
         }
         return feed_dict
 
@@ -120,7 +122,7 @@ class RNNLM_v1(object):
         summary_writer.flush()
 
 
-    def run_epoch(self, sess, dataset, train_op=None, summary_writer=None,verbose=500):
+    def run_epoch(self, sess, dataset, train_op=None, summary_writer=None,verbose=1000):
         if not train_op :
             train_op = tf.no_op()
             keep_prob = 1
@@ -135,10 +137,11 @@ class RNNLM_v1(object):
         total_steps = sum(1 for x in dataset.next_batch(self.config.batch_size,self.config.num_steps))	
 	#Sets to state to zero for a new epoch
         state = self.arch.initial_state.eval()
-        for step, (input_batch, label_batch, label_batch_2) in enumerate(
+        for step, (input_batch, label_batch, label_batch_2, seq_len) in enumerate(
             dataset.next_batch(self.config.batch_size,self.config.num_steps)):
 
-            feed_dict = self.create_feed_dict(input_batch, label_batch, label_batch_2)
+            #print("\n\n\nActualLabelCount: ", np.sum(label_batch_2, axis=2))
+            feed_dict = self.create_feed_dict(input_batch, label_batch, label_batch_2, seq_len)
             feed_dict[self.keep_prob] = keep_prob
 	    #Set's the initial_state temporarily to the previous final state for the session  "AWESOME" -- verified
 	    #feed_dict[self.arch.initial_state] = state 
@@ -158,6 +161,7 @@ class RNNLM_v1(object):
             sim_loss.append(loss_value[3])
             emb_loss.append(loss_value[4])
 
+            #print("\n\n\nPredLabels:", pred_labels)
 
             if verbose and step % verbose == 0:
                 metrics = [0]*20
@@ -526,8 +530,8 @@ if __name__ == "__main__":
     
     meta_param = {('dataset_name',):['BlogDWdata'],
                   ('solver', 'learning_rate'): [0.001],
-                  ('retrain',): [True],
-                  ('debug',): [True],
+                  ('retrain',): [False],
+                  ('debug',): [False],
                   ('max_epochs',): [1000]
     }
 

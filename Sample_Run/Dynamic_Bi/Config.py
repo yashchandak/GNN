@@ -24,7 +24,7 @@ class Config(object):
     debug = False
 
     # Batch size
-    batch_size = 128
+    batch_size = 32
     num_steps = 7
     #Number of steps to run trainer
     max_epochs = 1000
@@ -85,7 +85,7 @@ class Config(object):
 
             #optimizer
             self._parameters['optimizer'] = tf.train.AdamOptimizer(self._parameters['learning_rate'])
-            self._next_node_loss = True
+            self._next_node_loss = False
             self._curr_label_loss = True
             self._label_similarity_loss = False
             self._embedding_loss = False
@@ -106,7 +106,7 @@ class Config(object):
             self._len_labels = 0
             self._diffusion_rate = 0.75
             self._emb_factor = 1000
-            self._keep_label_percent = 1
+            self._keep_label_percent = 0.1
     
 
     class RNNArchitecture(object):

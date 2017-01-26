@@ -73,14 +73,12 @@ class Network(object):
             #U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size, self.config.data_sets._len_labels])
             #proj_b2 = tf.get_variable('Bias_label', [self.config.data_sets._len_labels])
             with tf.variable_scope('label'):
-                U2 = self.get_variable('Matrix_label', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_labels])
-                proj_b2 = self.get_variable('Bias_label', [self.config.data_sets._len_labels])
+                U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_labels])
+                proj_b2 = tf.get_variable('Bias_label', [self.config.data_sets._len_labels])
                 outputs_labels = [tf.matmul(o, U2) + proj_b2 for o in rnn_outputs]
 
             self.variable_summaries(U, 'Node_Projection_Matrix')
             self.variable_summaries(U2, 'Label_Projection_Matrix')
-
-            
             
         return [outputs, outputs_labels]
 
@@ -151,7 +149,7 @@ class Network(object):
         return outputs
         
 
-    def predict(self, inputs, keep_prob):
+    def predict(self, inputs, keep_prob, seq_len):
 
         class MyCell(RNNCell):
             def __init__(self, num_units):
@@ -167,13 +165,14 @@ class Network(object):
 
             def __call__(self, x, state, scope=None):
                 with tf.variable_scope(scope or type(self).__name__):
-                    #c, h = state
+                    
                     x_size = x.get_shape().as_list()[1]
                     RNN_H = tf.get_variable('HMatrix',[self.num_units, self.num_units])
                     RNN_I = tf.get_variable('IMatrix', [x_size,self.num_units])
                     RNN_b = tf.get_variable('B',[hidden_size])
-                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
-
+                    # state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
+                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + x + RNN_b)
+                    #state to be passed on should be a tuple
                     return state, state
  
 
@@ -185,25 +184,26 @@ class Network(object):
 
         with tf.variable_scope('InputDropout'):
             inputs = [tf.nn.dropout(x,keep_prob) for x in inputs]
-            seq_len = len(inputs) #[Check] should this be written as tensor function
             inputs = tf.pack(inputs)
             
         with tf.variable_scope('MyCell'):
             cell_fw = MyCell(hidden_size)
-            #cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, output_keep_prob = keep_prob)
-            #cell_fw = tf.nn.rnn_cell.MultiRNNCell([cell_fw] * num_layers)
+            cell_fw = tf.nn.rnn_cell.DropoutWrapper(cell_fw, output_keep_prob = keep_prob)
+            #cell_fw = tf.nn.rnn_cell.MultiRNNCell([cell_fw] * num_layers, state_is_tuple=False)
 
             cell_bw = MyCell(hidden_size)
-            #cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, output_keep_prob = keep_prob)
-            #cell_bw = tf.nn.rnn_cell.MultiRNNCell([cell_bw] * num_layers)
+            cell_bw = tf.nn.rnn_cell.DropoutWrapper(cell_bw, output_keep_prob = keep_prob)
+            #cell_bw = tf.nn.rnn_cell.MultiRNNCell([cell_bw] * num_layers, state_is_tuple=False)
 
-            initialState_fw = tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
-            initialState_bw = tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
-            outputs, output_states  = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, initial_state_fw=initialState_fw, initial_state_bw=initialState_bw,  dtype=tf.float32, time_major = True)
+            initialState_fw = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
+            initialState_bw = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
+            
+            outputs, output_states  = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, initial_state_fw=initialState_fw, initial_state_bw=initialState_bw, sequence_length=seq_len, dtype=tf.float32, time_major = True)
 
         self.final_state = output_states
         self.final_state_fw, self.final_state_bw = output_states[0], output_states[1]
-        outputs = tf.concat(2, [outputs[0], outputs[1]])
+        outputs_fw, outputs_bw = outputs[0], outputs[1]  #individual outputs  
+        outputs = tf.concat(2, [outputs_fw, outputs_bw]) #concatenated outputs
         outputs = tf.unpack(outputs,axis=0)
         
         with tf.variable_scope('RNNDropout'):
@@ -222,14 +222,13 @@ class Network(object):
         
         prediction_word = predictions[0]
         prediction_label = predictions[1]
-        #[IMP] dimensions of prediction_labels = (batch_size * seq_length, label_length)
-        pred_label_reshaped = tf.reshape(prediction_label, [self.config.num_steps, self.config.batch_size, self.config.data_sets._len_labels])
 
         #initialising variables
         cross_entropy_next = tf.constant(0)
         cross_entropy_label = tf.constant(0)
         cross_entropy_label_similarity = tf.constant(0)
         cross_entropy_emb = tf.constant(0)
+        
         self.prec_label, self.prec_label_op = tf.constant(1), tf.constant(1)
         self.recall_label, self.recall_label_op =  tf.constant(1), tf.constant(1)
         self.label_sigmoid = tf.constant(0)
@@ -248,20 +247,20 @@ class Network(object):
             
         if self.config.solver._curr_label_loss:
             #Get the slice of tensor representing label '0' for all batch.seq
+            #'0' label is assigned for <EOS> and the nodes whose labels are not known
             #Valid errors are only those which don't have '0' label
-            valid = tf.cast(tf.less(tf.slice(curr_label, [0,0,0], [self.config.num_steps, self.config.batch_size, 1]), tf.constant(1.0)), tf.float32)
+            valid = tf.cast(tf.less(tf.slice(curr_label, [0,0,0], [self.config.num_steps, self.config.batch_size, 1]), tf.constant(0.5)), tf.float32)
             #replicate along 3rd axis
             valid = tf.tile(valid, tf.pack([1,1,tf.shape(curr_label)[2]]))
         
             #Sigmoid activation
-            self.label_sigmoid = tf.sigmoid(pred_label_reshaped)
+            self.label_sigmoid = tf.sigmoid(prediction_label)
             #binary cross entropy for labels
             cross_loss = tf.add(tf.log(1e-10 + self.label_sigmoid)*curr_label,
                                 tf.log(1e-10 + (1-self.label_sigmoid))*(1-curr_label))
             #only consider the loss for valid label predictions
             #[TODO] mean of all or mean of only valid ???
             cross_entropy_label = -1*tf.reduce_mean(tf.reduce_sum(cross_loss*valid,2))
-            #label_loss = tf.concat(2,label_loss)
             tf.add_to_collection('total_loss', cross_entropy_label)
 
 
