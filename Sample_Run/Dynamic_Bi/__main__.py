@@ -511,11 +511,11 @@ def classify_and_save():
 
 def execute():
     with tf.device('/gpu:0'):
-        err = train_DNNModel() 
+        #err = train_DNNModel() 
         #test_DNNModel() 
         #interactive_generate_text_DNNModel()
-        save_Embeddings_DNNModel()
-        visualize_Embeddings_DNNModel() 
+        #save_Embeddings_DNNModel()
+        #visualize_Embeddings_DNNModel() 
         #generate_and_reconstruct()
         classify_and_save()  
         return err

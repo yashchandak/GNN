@@ -12,7 +12,7 @@ class Config():
     patience_increase = 2 # wait this much longer when a new best is found
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
     
-    def __init__(self, dataset = 'BlogDWdata/', embed_file = '/home/priyesh/Desktop/Codes/LINE-master/linux/Embeddings/youtube_line2_128.embd'):
+    def __init__(self, dataset, embed_file):
         self.root_path = '/home/yash/Project/GNN/Sample_Run/'
         self.project_name = 'Dynamic_Bi/'
         self.logs_d = '/Logs/'
@@ -33,9 +33,9 @@ class Config():
 
         self.metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
                         'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss']
-        self.training_percents = [0.1, 0.5, 0.9]
-        self.threshold = 0
-        self.num_shuffles = 2
+        self.training_percents = [10,50,90]
+        self.threshold = False
+        self.num_shuffles = 5
 	
         self.init2()
 
@@ -43,7 +43,7 @@ class Config():
         self.optimizer   = tf.train.AdamOptimizer(self.learning_rate)
         
         self.directory   = self.root_path + 'Datasets/' + self.dataset
-        self.label_file  = self.directory + 'labels.txt'
+        self.label_file  = self.directory + 'labels.mat'
         self.splits_file = self.directory + 'splits.dict.npy'
         self.results_folder = self.root_path + self.project_name + self.dataset + 'Results/'
 

@@ -1,4 +1,6 @@
+from __future__ import print_function
 import numpy as np
+from scipy.io import loadmat
 
 class Data():
 
@@ -8,17 +10,25 @@ class Data():
         self.labels     = self.get_labels(self.cfg.label_file)
         self.embeddings = self.get_embeddings_csv(self.cfg.embed_file)
         self.splits     = np.load(self.cfg.splits_file, encoding='bytes').item()
-        self.set_training_validation(train = (b'train',0,10), valid = (b'valid',0,10))
+        self.set_training_validation(10,1)
         self.has_more   = True
         self.index      = 0
 
 
-    def set_training_validation(self,train, valid):
-        self.training   = self.splits[train]
-        self.validation = self.splits[valid]
+    def set_training_validation(self,percent,fold):
+        
+        training   = np.load(self.cfg.directory +'labels/'+str(percent)+'/'+str(fold)+'/train_ids.npy' )#self.splits[train]
+        validation = np.load(self.cfg.directory +'labels/'+str(percent)+'/'+str(fold)+'/val_ids.npy' )#self.splits[valid]
+        
+        self.training = np.concatenate((np.where(training)[0], np.where(validation)[0]))
+        self.test     = np.where(np.load(self.cfg.directory +'labels/'+str(percent)+'/'+str(fold)+'/test_ids.npy' ))[0]
 
 
-    def get_labels(self, data_dir):
+    def get_labels(self, path):
+        labels = loadmat(path)['labels']
+        return labels
+    
+    def get_labels_old(self, data_dir):
         f = open(data_dir, 'r')
         #f.readline()#remove meta-data in first line
         data = f.read().split()
@@ -62,9 +72,10 @@ class Data():
             for i, val in enumerate(self.training[self.index: self.index+self.cfg.batch_size]):
                
                 inp_nodes[i] = self.embeddings[int(val)]
-                l = np.zeros(self.cfg.label_len, int)
-                l[self.labels[val]] = 1
-                inp_labels[i] = l
+                #l = np.zeros(self.cfg.label_len, int)
+                #l[self.labels[val]] = 1
+                # inp_labels[i] = l
+                inp_labels[i] = self.labels[val]
 
             self.index += self.cfg.batch_size
             
@@ -73,32 +84,22 @@ class Data():
 
         return inp_nodes, inp_labels
 
-    def get_training_sparse(self):
+
+    def get_train(self):
         inp_nodes  = np.zeros((len(self.training), self.cfg.input_len))
-        inp_labels = [0]*len(self.training)
-        for i,val in  enumerate(self.training):
+        inp_labels = np.zeros((len(self.training), self.cfg.label_len))
+        for i,val in enumerate(self.training):
             inp_nodes[i] = self.embeddings[val]
             inp_labels[i] = self.labels[val]
 
         return inp_nodes, inp_labels
 
-    def get_validation_sparse(self):
-        inp_nodes  = np.zeros((len(self.validation), self.cfg.input_len))
-        inp_labels = [0]*len(self.validation)
-        for i,val in  enumerate(self.validation):
+    def get_test(self):
+        inp_nodes  = np.zeros((len(self.test), self.cfg.input_len))
+        inp_labels = np.zeros((len(self.test), self.cfg.label_len))
+        for i,val in enumerate(self.test):
             inp_nodes[i] = self.embeddings[val]
             inp_labels[i] = self.labels[val]
 
         return inp_nodes, inp_labels
-
-
-    def get_validation(self):
-        inp_nodes  = np.zeros((len(self.validation), self.cfg.input_len))
-        inp_labels = np.zeros((len(self.validation), self.cfg.label_len))
-        for i,val in  enumerate(self.validation):
-            inp_nodes[i] = self.embeddings[val]
-            l = np.zeros(self.cfg.label_len)
-            l[self.labels[val]] = 1.0
-            inp_labels[i] = l
-
-        return inp_nodes, inp_labels
+    

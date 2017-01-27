@@ -12,26 +12,19 @@ from Eval_Config import Config
 import Eval_utils as utils
 
 
-def get_dense(inp, size):
-    dense = numpy.zeros((len(inp),size))
-    for i in range(len(inp)):
-        dense[i][inp[i]] = 1
-    return dense
-
 def evaluate(cfg):
         data = Data(cfg)
         all_results = {}
         for train_percent in cfg.training_percents:
             all_results[train_percent] = {}
-            for shuf in range(cfg.num_shuffles):
-                data.set_training_validation((b'train',shuf, int(train_percent*100)), (b'valid',shuf, int(train_percent*100)))
+            for shuf in range(1,cfg.num_shuffles+1):
+                # data.set_training_validation((b'train',shuf, int(train_percent*100)), (b'valid',shuf, int(train_percent*100)))
+                data.set_training_validation(train_percent, shuf)
 
-                X_train, Y_train = data.get_training_sparse()
-                X_test, Y_test   = data.get_validation_sparse()
+                X_train, Y_train_dense = data.get_train()
+                X_test, Y_test_dense   = data.get_test()
 
-                Y_train_dense = get_dense(Y_train, cfg.label_len)
-                Y_test_dense  = get_dense(Y_test, cfg.label_len)
-
+                
                 clf = OneVsRestClassifier(LogisticRegression())
                 clf.fit(X_train, scipy.sparse.coo_matrix(Y_train_dense))
 
