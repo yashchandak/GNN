@@ -170,8 +170,8 @@ class Network(object):
                     RNN_H = tf.get_variable('HMatrix',[self.num_units, self.num_units])
                     RNN_I = tf.get_variable('IMatrix', [x_size,self.num_units])
                     RNN_b = tf.get_variable('B',[hidden_size])
-                    # state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
-                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + x + RNN_b)
+                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
+                    #state = tf.nn.tanh(tf.matmul(state,RNN_H) + x + RNN_b)
                     #state to be passed on should be a tuple
                     return state, state
  

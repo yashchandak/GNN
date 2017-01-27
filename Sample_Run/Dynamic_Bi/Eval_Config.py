@@ -13,8 +13,8 @@ class Config():
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
     
     def __init__(self, dataset = 'BlogDWdata/', embed_file = '/home/priyesh/Desktop/Codes/LINE-master/linux/Embeddings/youtube_line2_128.embd'):
-        self.root_path = '/home/priyesh/Desktop/Codes/Sample_Run/'
-        self.project_name = 'Idea1/'
+        self.root_path = '/home/yash/Project/GNN/Sample_Run/'
+        self.project_name = 'Dynamic_Bi/'
         self.logs_d = '/Logs/'
 
 

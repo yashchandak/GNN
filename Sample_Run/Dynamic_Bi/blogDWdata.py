@@ -6,6 +6,7 @@ from tensorflow.python.framework import dtypes
 from Utils import ptb_iterator
 from vocab import Vocab
 from random import shuffle
+from scipy.io import loadmat
 
 class DataSet(object):
 
@@ -39,7 +40,7 @@ def get_ptb_dataset(dataset):
           yield word
       yield '<eos>'
 
-def get_labels(data_dir, vocab,  percent = 1):
+def get_labels_old(data_dir, vocab,  percent = 1): #UNUSED
   data = open(data_dir).read().split()
   labels = {}
   inverse_labels = {}
@@ -83,19 +84,35 @@ def get_labels(data_dir, vocab,  percent = 1):
     return reduced_labels
   return labels
 
+def get_labels(all_labels, nodes, vocab):
+    #Labels start with node '0'; Walks_data with node '1'
+    #To get corresponding mapping, increment the label node number by 1
+    #append new 0th label and shift every other label right by 1 -->
+    #--> 0th label is used for <eos> and nodes without labels
+    new_labels = {}
+    for idx, val in enumerate(nodes):
+      if val:
+        new_labels[vocab.encode(str(idx+1))] = np.concatenate(([0],all_labels[idx]))
 
-def read_data_sets(data_dir, label_percent, dtype=dtypes.float32,validation_ratio=0.20):
-    vocab = Vocab()
-    vocab.construct(get_ptb_dataset(data_dir+'p_walks.txt'))
-    train_x = np.array([vocab.encode(word) for word in get_ptb_dataset(data_dir+'train_walks.txt')],dtype=np.int32)
-    validation_x = np.array([vocab.encode(word) for word in get_ptb_dataset(data_dir+'val_walks.txt')],dtype=np.int32)
-
-    #Consider only a percentage of labels for training
-    labels = get_labels(data_dir+'labels.txt', vocab, label_percent)
-    #Consider all labels for validating
-    val_labels = get_labels(data_dir+'labels.txt',vocab, 1)
+    return new_labels
+      
     
-    train = DataSet(train_x, vocab,labels, dtype=dtype)
+
+def read_data_sets(cfg, dtype=dtypes.float32):
+    vocab = Vocab()
+    vocab.construct(get_ptb_dataset(cfg.train_dir+'p_walks.txt'))
+    train_x = np.array([vocab.encode(word) for word in get_ptb_dataset(cfg.train_dir+'train_walks.txt')],dtype=np.int32)
+    validation_x = np.array([vocab.encode(word) for word in get_ptb_dataset(cfg.train_dir+'val_walks.txt')],dtype=np.int32)
+
+    all_labels        = loadmat(cfg.label_dir)['labels']
+
+    label_train_nodes = np.load(cfg.label_fold_dir+'train_ids.npy')
+    label_val_nodes   = np.load(cfg.label_fold_dir+'val_ids.npy')
+
+    train_labels = get_labels(all_labels, label_train_nodes, vocab) 
+    val_labels   = get_labels(all_labels, label_val_nodes  , vocab) 
+    
+    train = DataSet(train_x, vocab, train_labels, dtype=dtype)
     validation = DataSet(validation_x, vocab, val_labels, dtype=dtype)
 
     datasets_template = collections.namedtuple('Datasets_template', ['train','validation'])

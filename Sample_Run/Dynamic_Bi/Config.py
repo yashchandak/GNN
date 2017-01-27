@@ -10,8 +10,10 @@ class Config(object):
     ####  Directory paths ####
     #Folder name and project name is the same
     project_name = 'Dynamic_Bi'
-    dataset_name = 'BlogDWdata'
-   
+    dataset_name = 'blogcatalog_ncc'
+    train_percent = 10
+    train_fold  = 1
+    
     logs_d   = '/Logs/'
     ckpt_d   = '/Checkpoints/'
     embed_d  = '/Embeddings/'
@@ -49,7 +51,9 @@ class Config(object):
         self.init2()
 
     def init2(self):
-        self.train_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/'
+        self.train_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/'+ 'walks' +  '/'
+        self.label_fold_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/labels/'+ str(self.train_percent) + '/' + str(self.train_fold) + '/'
+        self.label_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/labels.mat'
 
         #Logs and checkpoints to be stored in the code directory
         self.project_prefix_path = self.codebase_root_path+ self.project_name+'/'
@@ -106,7 +110,7 @@ class Config(object):
             self._len_labels = 0
             self._diffusion_rate = 0.75
             self._emb_factor = 1000
-            self._keep_label_percent = 0.1
+            #self._keep_label_percent = 1
     
 
     class RNNArchitecture(object):

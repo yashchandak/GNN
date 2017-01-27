@@ -39,7 +39,7 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
 
     #[ASSUMPTION] label has at least one node per label
     #add one to accomodate '0' label
-    label_len = len(set([l for labels in label.values() for l in labels])) + 1
+    label_len = len(list(label.values())[0])# len(set([l for labels in label.values() for l in labels])) + 1
 
     for i in range(batch_size):
         data[i] = raw_data[batch_len * i:batch_len * (i + 1)]
@@ -62,12 +62,14 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
             temp = []
             count = 0
             for item in seq:
-                z = np.zeros(label_len)
-                z[label.get(item, [0])] = 1
-                if label.get(item,False):
+                l = label.get(item, [])
+                if len(l)>0:
                         count +=1
-
-                temp.append(z)
+                        temp.append(l)
+                else:        
+                        z = np.zeros(label_len)
+                        z[0] =1
+                        temp.append(z)
 
             seq_len.append(count+1) #1 extra time step since sequences starts with <EOS>    
             x_labels.append(temp)

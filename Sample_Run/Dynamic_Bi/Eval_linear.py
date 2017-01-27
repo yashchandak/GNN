@@ -24,7 +24,7 @@ def evaluate(cfg):
         for train_percent in cfg.training_percents:
             all_results[train_percent] = {}
             for shuf in range(cfg.num_shuffles):
-                data.set_training_validation(('train',shuf, int(train_percent*100)), ('valid',shuf, int(train_percent*100)))
+                data.set_training_validation((b'train',shuf, int(train_percent*100)), (b'valid',shuf, int(train_percent*100)))
 
                 X_train, Y_train = data.get_training_sparse()
                 X_test, Y_test   = data.get_validation_sparse()

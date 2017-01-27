@@ -40,8 +40,6 @@ class RNNLM_v1(object):
 
         # casting to handle numerical stability
         self.predictions_next = [tf.nn.softmax(tf.cast(o, 'float64')) for o in self.outputs[0]]
-        self.predictions_label= [tf.sigmoid(tf.cast(o, 'float64')) for o in self.outputs[1]]
-
         # Reshape the output into len(vocab) sized chunks - the -1 says as many as
         # needed to evenly divide
         output_next = tf.reshape(tf.concat(1, self.outputs[0]), [-1, self.config.data_sets._len_vocab])
@@ -61,7 +59,7 @@ class RNNLM_v1(object):
         
     def load_data(self):
         # Get the 'encoded data'
-        self.data_sets =  input_data.read_data_sets(self.config.train_dir, self.config.data_sets._keep_label_percent)
+        self.data_sets =  input_data.read_data_sets(self.config)
         debug = self.config.debug
         if debug:
             print('##############--------- Debug mode ')
@@ -72,9 +70,8 @@ class RNNLM_v1(object):
         
         self.config.data_sets._len_vocab = self.data_sets.train.vocab.__len__()
 
-        l = self.data_sets.train.labels.values()
-        len_labels = len(set([label for labels in l for label in labels])) + 1
-        self.config.data_sets._len_labels= len_labels
+        l = len(list(self.data_sets.train.labels.values())[0])
+        self.config.data_sets._len_labels= l
 
         print('--------- Project Path: '+self.config.codebase_root_path+self.config.project_name)
         print('--------- Vocabulary Length: '+str(self.config.data_sets._len_vocab))
@@ -140,7 +137,7 @@ class RNNLM_v1(object):
         for step, (input_batch, label_batch, label_batch_2, seq_len) in enumerate(
             dataset.next_batch(self.config.batch_size,self.config.num_steps)):
 
-            #print("\n\n\nActualLabelCount: ", np.sum(label_batch_2, axis=2))
+            #print("\n\n\nActualLabelCount: ", input_batch, label_batch, label_batch_2, seq_len, np.sum(label_batch_2, axis=2))
             feed_dict = self.create_feed_dict(input_batch, label_batch, label_batch_2, seq_len)
             feed_dict[self.keep_prob] = keep_prob
 	    #Set's the initial_state temporarily to the previous final state for the session  "AWESOME" -- verified
@@ -246,7 +243,7 @@ class RNNLM_v1(object):
             return sess.run(self.inputs,feed_dict=feed_dict)[0]
 	
         if layer == 1:
-            feed_dict = {self.data_placeholder: [data], self.keep_prob: 1, self.arch.initial_state: self.arch.initial_state.eval()}
+            feed_dict = {self.data_placeholder: [data], self.keep_prob: 1, self.arch.initial_state: self.arch.initial_state.eval(), self.seq_len:[1]}
             return sess.run(self.rnn_outputs, feed_dict=feed_dict)[0]
 
         else:
@@ -256,7 +253,7 @@ class RNNLM_v1(object):
     def get_hidden_state(self,sess,data,eos_embed=None):
         if eos_embed is None:
            eos_embed = self.arch.initial_state.eval()
-        feed_dict = {self.data_placeholder: [data], self.keep_prob: 1, self.arch.initial_state: eos_embed}
+        feed_dict = {self.data_placeholder: [data], self.keep_prob: 1, self.arch.initial_state: eos_embed, self.seq_len:[1]}
         return sess.run(self.rnn_outputs,feed_dict=feed_dict)[0]
 
     def generate_text(self,session, starting_text='<eos>',stop_length=100, stop_tokens=None, temp=1.0 ):
@@ -528,9 +525,9 @@ if __name__ == "__main__":
     #remove parameter dictionary
     #Embeddings and checkpoint directorty
     
-    meta_param = {('dataset_name',):['BlogDWdata'],
+    meta_param = {('dataset_name',):['blogcatalog_ncc'],
                   ('solver', 'learning_rate'): [0.001],
-                  ('retrain',): [False],
+                  ('retrain',): [True],
                   ('debug',): [False],
                   ('max_epochs',): [1000]
     }

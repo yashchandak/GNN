@@ -6,9 +6,9 @@ class Data():
         self.cfg = cfg
 
         self.labels     = self.get_labels(self.cfg.label_file)
-        self.embeddings = self.get_embeddings(self.cfg.embed_file)
-        self.splits     = np.load(self.cfg.splits_file).item()
-        self.set_training_validation(train = ('train',0,10), valid = ('valid',0,10))
+        self.embeddings = self.get_embeddings_csv(self.cfg.embed_file)
+        self.splits     = np.load(self.cfg.splits_file, encoding='bytes').item()
+        self.set_training_validation(train = (b'train',0,10), valid = (b'valid',0,10))
         self.has_more   = True
         self.index      = 0
 
