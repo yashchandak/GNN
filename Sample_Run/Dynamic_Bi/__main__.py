@@ -21,7 +21,6 @@ import Eval_Config
 
 cfg = conf.Config() 
 
-
 #Code structure inspired from Stanford's cs224d assignment starter codes
 #class DNN(Model):
 class RNNLM_v1(object):
@@ -79,8 +78,6 @@ class RNNLM_v1(object):
         print('--------- No. of Labelled nodes: ' + str(len(self.data_sets.train.labels.keys())))
 
     def add_placeholders(self):
-        #self.data_placeholder = tf.placeholder(tf.int32,shape=[None,self.config.num_steps],name='Input')
-	#self.label_placeholder = tf.placeholder(tf.int32,shape=[None,self.config.num_steps],name='Target')
         self.data_placeholder = tf.placeholder(tf.int32,shape=[None,self.config.num_steps], name='Input')
         self.label_placeholder = tf.placeholder(tf.int32,name='Target')
         self.label_2_placeholder = tf.placeholder(tf.int32,name='Target_label')
@@ -401,38 +398,6 @@ def save_Embeddings_DNNModel():
         print('--------- Embeddings are saved to '+fn)
 
         
-def save_Embeddings_DNNModel2(): #UNUSED
-    #global cfg
-    print('############## Save Embeddings Module ')
-    config = deepcopy(cfg)
-    config.batch_size = config.num_steps = 1
-    model,sess = init_Model(config)
-    with sess:
-        model.add_summaries(sess)
-        ignore_list = ['0','<eos>','<unk>'] 
-        keys = [int(word) for word in model.data_sets.train.vocab.word_freq.keys() if word not in ignore_list] 
-        keys.sort()
-        vocab_len = len(keys)
-        enc_words = np.array([model.data_sets.train.vocab.encode(str(word)) for word in keys])
-
-        embed0 = np.zeros([vocab_len,model.config.mRNN._embed_size])
-        embed1 = np.zeros([vocab_len,model.config.mRNN._hidden_size])
-        for i,word in enumerate(enc_words):
-            embed0[i] = model.get_embedding(sess,[word], layer=0)
-            embed1[i] = model.get_embedding(sess,[word], layer=1)
-	
-                
-        fn0 = config.embed_dir+config.dataset_name+'_data0.embd'
-        fn1 = config.embed_dir+config.dataset_name+'_data1.embd'
-
-        save_embed(config.embed_dir+config.dataset_name+'_data0'+str(config.mRNN._embed_size)+'.embd', embed0)
-        save_embed(config.embed_dir+config.dataset_name+'_data1'+str(config.mRNN._hidden_size)+'.embd', embed1)
-
-        np.savetxt(fn0, embed0, delimiter=',')
-        np.savetxt(fn1, embed1, delimiter=',')
-
-        print('--------- Embeddings are saved to '+fn0)
-
 def save_embed(path, embed): #UNUSED
 	f = open(path, 'w')
 	for idx, item in enumerate(embed):
@@ -521,9 +486,7 @@ def execute():
         return err
     
 if __name__ == "__main__":
-    #deepcopy cfg
     #remove parameter dictionary
-    #Embeddings and checkpoint directorty
     
     meta_param = {('dataset_name',):['blogcatalog_ncc'],
                   ('solver', 'learning_rate'): [0.001],

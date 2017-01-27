@@ -61,9 +61,12 @@ class Config(object):
 
     def check_n_create(self, path):
         if not os.path.exists(path):
+            #if the path doesn't exists, create it
             os.mkdir(path)
         else:
             if not self.retrain:
+            #path exists but if retrain in False
+            #then replace previous folder with new folder
                 shutil.rmtree(path)
                 os.mkdir(path)
         

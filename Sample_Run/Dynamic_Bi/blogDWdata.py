@@ -35,7 +35,6 @@ def get_ptb_dataset(dataset):
       for word in line.split():
         if word == '0':
           yield '<eos>'
-        #[FIXED]: else statement missing?
         else:
           yield word
       yield '<eos>'

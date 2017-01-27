@@ -18,19 +18,20 @@ def evaluate(cfg):
         for train_percent in cfg.training_percents:
             all_results[train_percent] = {}
             for shuf in range(1,cfg.num_shuffles+1):
-                # data.set_training_validation((b'train',shuf, int(train_percent*100)), (b'valid',shuf, int(train_percent*100)))
+                #set the data for current train percent and fold
                 data.set_training_validation(train_percent, shuf)
 
-                X_train, Y_train_dense = data.get_train()
-                X_test, Y_test_dense   = data.get_test()
+                X_train, Y_train_dense = data.get_all_nodes_labels(data.training)
+                X_test, Y_test_dense   = data.get_all_nodes_labels(data.test)
 
-                
+                #Fit a linear classifier on the data
                 clf = OneVsRestClassifier(LogisticRegression())
                 clf.fit(X_train, scipy.sparse.coo_matrix(Y_train_dense))
 
                 best_th  = 0
                 if cfg.threshold:
                     best_val, i = -1, 0.1
+                    #do grid search on validation set to find best threshold value
                     while(i<0.3):
                         preds = clf.predict_proba(X_train)
                         val = perf.evaluate(preds, Y_train_dense, threshold=i)[3] #3 = micr0-f1, 4=macro-f1
@@ -50,7 +51,6 @@ def evaluate(cfg):
         for train_percent in sorted(all_results.keys()):
             print ('Train percent:', train_percent)
             micro, macro = [], []
-            #print numpy.mean(all_results[train_percent])
             x = all_results[train_percent]
             for v in x.values():
                 micro.append(v[3])
@@ -58,7 +58,8 @@ def evaluate(cfg):
             print (x.values())
             print ("Micro: ",numpy.mean(micro), "  Macro: ",numpy.mean(macro))
             print ('-------------------')
-            utils.write_results(cfg, all_results)
+
+        utils.write_results(cfg, all_results)
 
 if __name__ == "__main__":
      con = Config()

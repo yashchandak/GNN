@@ -21,6 +21,7 @@ def data_iterator(orig_X, orig_y=None, batch_size=32, shuffle=False):
 		y = data_y[batch_start:batch_start + batch_size]
 		yield x, y
 		total_processed_examples += len(x)
+                
 	# Sanity check to make sure we iterated over all the dataset as intended
 	assert total_processed_examples == len(data_X), 'Expected {} and processed {}'.format(len(data_X), total_processed_examples)
 
@@ -37,22 +38,20 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
     batch_len = data_len // batch_size
     data = np.zeros([batch_size, batch_len], dtype=np.int32)
 
-    #[ASSUMPTION] label has at least one node per label
-    #add one to accomodate '0' label
-    label_len = len(list(label.values())[0])# len(set([l for labels in label.values() for l in labels])) + 1
+    label_len = len(list(label.values())[0])
 
     for i in range(batch_size):
         data[i] = raw_data[batch_len * i:batch_len * (i + 1)]
     if shuffle:
         indices = np.random.permutation(len(data))
-        #data = data[indices]
+        data = data[indices]
+
     epoch_size = batch_len//(num_steps+1)
+    
     if batch_len % (num_steps+1) != 0:
         raise ValueError("Change batch size, Each batch length is not divisible by (num_steps+1)")
 
     for i in range(epoch_size):
-        #print("Ptb Iterator: ",data_len, batch_len, epoch_size)
-        #print(data[0])
         x = data[:, i * (num_steps+1)    : (i + 1) * (num_steps+1) - 1]
         y = data[:, i * (num_steps+1) + 1: (i + 1) * (num_steps+1)]
 
@@ -66,7 +65,9 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
                 if len(l)>0:
                         count +=1
                         temp.append(l)
-                else:        
+                else:
+                        #label doesn't exists
+                        #create all zeros, and set first position to 1
                         z = np.zeros(label_len)
                         z[0] =1
                         temp.append(z)

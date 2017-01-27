@@ -6,11 +6,9 @@ class Data():
 
     def __init__(self, cfg):
         self.cfg = cfg
-
         self.labels     = self.get_labels(self.cfg.label_file)
         self.embeddings = self.get_embeddings_csv(self.cfg.embed_file)
-        self.splits     = np.load(self.cfg.splits_file, encoding='bytes').item()
-        self.set_training_validation(10,1)
+        self.set_training_validation(10,1) #Some value just for initialization
         self.has_more   = True
         self.index      = 0
 
@@ -19,7 +17,9 @@ class Data():
         
         training   = np.load(self.cfg.directory +'labels/'+str(percent)+'/'+str(fold)+'/train_ids.npy' )#self.splits[train]
         validation = np.load(self.cfg.directory +'labels/'+str(percent)+'/'+str(fold)+'/val_ids.npy' )#self.splits[valid]
-        
+
+        #Get the positions where boolean values are True
+        #concatenate training and validation used for language model
         self.training = np.concatenate((np.where(training)[0], np.where(validation)[0]))
         self.test     = np.where(np.load(self.cfg.directory +'labels/'+str(percent)+'/'+str(fold)+'/test_ids.npy' ))[0]
 
@@ -28,20 +28,8 @@ class Data():
         labels = loadmat(path)['labels']
         return labels
     
-    def get_labels_old(self, data_dir):
-        f = open(data_dir, 'r')
-        #f.readline()#remove meta-data in first line
-        data = f.read().split()
-        labels = {}
-        for i in range(0, len(data), 2):
-            n = int(data[i])   
-            l = int(data[i+1]) 
-            labels[n] = labels.get(n, [])
-            labels[n].append(l)
-
-        return labels
-
     def get_embeddings(self, data_dir):
+        #Read from key-value format of Gensim dumps
         f = open(data_dir, 'r')
         f.readline()#remove meta-data in first line
         data = f.read().split()
@@ -66,40 +54,29 @@ class Data():
         self.has_more = True
 
     def next_batch(self):
+        #Batch-wise feeding for Neural net based classifier
         inp_nodes  = np.zeros((self.cfg.batch_size, self.cfg.input_len))
         inp_labels = np.zeros((self.cfg.batch_size, self.cfg.label_len))
         if self.has_more:
-            for i, val in enumerate(self.training[self.index: self.index+self.cfg.batch_size]):
-               
+            for i, val in enumerate(self.training[self.index: self.index+self.cfg.batch_size]):              
                 inp_nodes[i] = self.embeddings[int(val)]
-                #l = np.zeros(self.cfg.label_len, int)
-                #l[self.labels[val]] = 1
-                # inp_labels[i] = l
                 inp_labels[i] = self.labels[val]
 
             self.index += self.cfg.batch_size
-            
+
+        #Check if next batch is possible
         if self.index+self.cfg.batch_size >= len(self.training):
             self.has_more = False
 
         return inp_nodes, inp_labels
 
 
-    def get_train(self):
-        inp_nodes  = np.zeros((len(self.training), self.cfg.input_len))
-        inp_labels = np.zeros((len(self.training), self.cfg.label_len))
-        for i,val in enumerate(self.training):
+    def get_all_nodes_labels(self, data):
+        #Get the embedding and corresponding labels at once for all nodes
+        inp_nodes  = np.zeros((len(data), self.cfg.input_len))
+        inp_labels = np.zeros((len(data), self.cfg.label_len))
+        for i,val in enumerate(data):
             inp_nodes[i] = self.embeddings[val]
             inp_labels[i] = self.labels[val]
 
         return inp_nodes, inp_labels
-
-    def get_test(self):
-        inp_nodes  = np.zeros((len(self.test), self.cfg.input_len))
-        inp_labels = np.zeros((len(self.test), self.cfg.label_len))
-        for i,val in enumerate(self.test):
-            inp_nodes[i] = self.embeddings[val]
-            inp_labels[i] = self.labels[val]
-
-        return inp_nodes, inp_labels
-    

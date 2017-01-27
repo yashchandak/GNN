@@ -28,7 +28,6 @@ class Config():
 
         self.batch_size = 32
         self.learning_rate = 0.001
-        #self.epoch = 10000        
         self.drop = 0.8
 
         self.metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
@@ -54,15 +53,11 @@ class Config():
             #if not self.retrain:
             #    shutil.rmtree(path)
             os.mkdir(path)
+
         
     def create(self, ext_path =""):
         #create directories
         ext_path = './'+ext_path
         self.logs_dir = ext_path + self.logs_d
-        #self.ckpt_dir = ext_path + self.ckpt_d
-        #self.embed_dir= ext_path + self.embed_d
-
         self.check_n_create(ext_path)
         self.check_n_create(self.logs_dir)
-        #self.check_n_create(self.ckpt_dir)
-        #self.check_n_create(self.embed_dir)

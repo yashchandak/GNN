@@ -60,18 +60,10 @@ class Network(object):
         """
         
         with tf.variable_scope('Projection'):
-            #weight matrix and bias for next word projection
-            #U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size, self.config.data_sets._len_vocab])
-            #proj_b = tf.get_variable('Bias', [self.config.data_sets._len_vocab])
-            
-            # U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size, self.config.data_sets._len_vocab])
             U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_vocab])
             proj_b = tf.get_variable('Bias', [self.config.data_sets._len_vocab])
             outputs = [tf.matmul(o, U) + proj_b for o in rnn_outputs]
 
-            #Weight matrix and bias for Label projection
-            #U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size, self.config.data_sets._len_labels])
-            #proj_b2 = tf.get_variable('Bias_label', [self.config.data_sets._len_labels])
             with tf.variable_scope('label'):
                 U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_labels])
                 proj_b2 = tf.get_variable('Bias_label', [self.config.data_sets._len_labels])
@@ -152,6 +144,7 @@ class Network(object):
     def predict(self, inputs, keep_prob, seq_len):
 
         class MyCell(RNNCell):
+            #Define new kind of RNN cell
             def __init__(self, num_units):
                 self.num_units = num_units
 
@@ -198,7 +191,9 @@ class Network(object):
             initialState_fw = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
             initialState_bw = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
             
-            outputs, output_states  = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, initial_state_fw=initialState_fw, initial_state_bw=initialState_bw, sequence_length=seq_len, dtype=tf.float32, time_major = True)
+            outputs, output_states  = tf.nn.bidirectional_dynamic_rnn(cell_fw, cell_bw, inputs, 
+                                                                      initial_state_fw=initialState_fw, initial_state_bw=initialState_bw, 
+                                                                      sequence_length=seq_len, dtype=tf.float32, time_major = True)
 
         self.final_state = output_states
         self.final_state_fw, self.final_state_bw = output_states[0], output_states[1]
@@ -240,10 +235,6 @@ class Network(object):
             #cross entropy loss for next word prediction
             cross_entropy_next = sequence_loss([prediction_word],[tf.reshape(next_word, [-1])], all_ones, self.config.data_sets._len_vocab)
             tf.add_to_collection('total_loss', cross_entropy_next)
-
-            
-            #pred_next, update_op_next = tf.contrib.metrics.streaming
-
             
         if self.config.solver._curr_label_loss:
             #Get the slice of tensor representing label '0' for all batch.seq
