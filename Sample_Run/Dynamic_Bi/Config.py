@@ -10,8 +10,8 @@ class Config(object):
     ####  Directory paths ####
     #Folder name and project name is the same
     project_name = 'Dynamic_Bi'
-    dataset_name = 'blogcatalog_ncc'
-    train_percent = 10
+    dataset_name = 'karate'
+    train_percent = 50
     train_fold  = 1
     
     logs_d   = '/Logs/'
@@ -26,7 +26,7 @@ class Config(object):
     debug = False
 
     # Batch size
-    batch_size = 32
+    batch_size = 25
     num_steps = 7
     #Number of steps to run trainer
     max_epochs = 1000
@@ -67,6 +67,7 @@ class Config(object):
             if not self.retrain:
             #path exists but if retrain in False
             #then replace previous folder with new folder
+                print(path)
                 shutil.rmtree(path)
                 os.mkdir(path)
         
@@ -88,7 +89,7 @@ class Config(object):
         def __init__(self):
             self._parameters = {}
             #Initial learning rate
-            self._parameters['learning_rate'] = 0.001
+            self._parameters['learning_rate'] = 0.01
 
             #optimizer
             self._parameters['optimizer'] = tf.train.AdamOptimizer(self._parameters['learning_rate'])

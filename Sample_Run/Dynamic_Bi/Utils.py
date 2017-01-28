@@ -1,3 +1,4 @@
+from __future__ import print_function
 from collections import defaultdict
 import numpy as np
 
@@ -47,8 +48,16 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
         data = data[indices]
 
     epoch_size = batch_len//(num_steps+1)
-    
+
     if batch_len % (num_steps+1) != 0:
+        if (data_len) % (num_steps+1) !=0:
+            print ('Data is not a multiple of num_steps, consider changing number of sequences')
+    
+        x = [x for x in range(2,int(data_len/2)+1) if (data_len/(num_steps+1)) %x ==0 and x < 1000]
+        print ('\nTry these batch sizes',x)
+        
+        x = min([x for x in range(1,1000) if (data_len+x)%(num_steps+1)==0 and ((data_len+x)/(num_steps+1))%batch_size ==0])
+        print ('Or Add these many words :',x, ' sequences: ', float(x/(num_steps+1)))
         raise ValueError("Change batch size, Each batch length is not divisible by (num_steps+1)")
 
     for i in range(epoch_size):

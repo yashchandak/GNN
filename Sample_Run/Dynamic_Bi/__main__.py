@@ -221,7 +221,7 @@ class RNNLM_v1(object):
             if (epoch % self.config.val_epochs_freq == 0):
                 val_pp,val_loss, val_micro, val_macro = self.run_epoch(sess,self.data_sets.validation,summary_writer=self.summary_writer_val)
 
-                print('\n Epoch %d: tr_loss = %.2f, val_loss = %.2f || tr_pp = %.2f, val_pp = %.2f || tr_micro = %.2f, val_micro = %.2f || tr_macro = %.2f, val_macro = %.2f  (%.3f sec)'
+                print('\nEpoch %d: tr_loss = %.2f, val_loss = %.2f || tr_pp = %.2f, val_pp = %.2f || tr_micro = %.2f, val_micro = %.2f || tr_macro = %.2f, val_macro = %.2f  (%.3f sec)'
                       % (epoch, average_loss, val_loss, tr_pp, val_pp, tr_micro, val_micro, tr_macro, val_macro, duration))
                 	
                 # Save model only if the improvement is significant
@@ -232,7 +232,7 @@ class RNNLM_v1(object):
                     self.saver.save(sess, checkpoint_file, global_step=epoch)
                     best_step = epoch
                     patience = epoch + max(self.config.val_epochs_freq,self.config.patience_increase)
-                    print('best step %d'%(best_step))
+                #print('best step %d'%(best_step))
 		
                 elif val_loss > validation_loss * improvement_threshold:
                     patience = epoch - 1
@@ -512,7 +512,8 @@ if __name__ == "__main__":
     
     meta_param = {#('dataset_name',):['blogcatalog_ncc'],
                   #('solver', 'learning_rate'): [0.001],
-                  #('retrain',): [True],
+                  ###[IMP: ] Bug here: If retrain is false, all the other saving/visualizing etc functions remove the folder. 
+                  #('retrain',): [False],   
                   ('debug',): [False],
                   ('max_epochs',): [1000]
     }

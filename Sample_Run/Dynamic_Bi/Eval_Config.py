@@ -22,7 +22,7 @@ class Config():
         self.embed_file = embed_file
 
         self.input_len = 128
-        self.label_len = 39
+        self.label_len = 4
         
         self.hidden = 256
 
@@ -32,13 +32,14 @@ class Config():
 
         self.metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
                         'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss']
-        self.training_percents = [10,50,90]
+        self.training_percents = [50]
         self.threshold = False
-        self.num_shuffles = 5
+        self.num_shuffles = 1
 	
         self.init2()
 
     def init2(self):
+        print(self.dataset, self.embed_file)	
         self.optimizer   = tf.train.AdamOptimizer(self.learning_rate)
         
         self.directory   = self.root_path + 'Datasets/' + self.dataset
@@ -49,10 +50,10 @@ class Config():
     def check_n_create(self, path):
         if not os.path.exists(path):
             os.mkdir(path)
-        else:
+        #else:
             #if not self.retrain:
             #    shutil.rmtree(path)
-            os.mkdir(path)
+            #os.mkdir(path)
 
         
     def create(self, ext_path =""):

@@ -99,23 +99,23 @@ def get_labels(all_labels, nodes, vocab):
 
 def read_data_sets(cfg, dtype=dtypes.float32):
     vocab = Vocab()
-    vocab.construct(get_ptb_dataset(cfg.train_dir+'p_walks.txt'))
+    vocab.construct(get_ptb_dataset(cfg.train_dir+'walks.txt'))
     train_x = np.array([vocab.encode(word) for word in get_ptb_dataset(cfg.train_dir+'train_walks.txt')],dtype=np.int32)
     validation_x = np.array([vocab.encode(word) for word in get_ptb_dataset(cfg.train_dir+'val_walks.txt')],dtype=np.int32)
 
     all_labels        = loadmat(cfg.label_dir)['labels']
 
     label_train_nodes = np.load(cfg.label_fold_dir+'train_ids.npy')
-    label_val_nodes   = np.load(cfg.label_fold_dir+'val_ids.npy')
+    label_val_nodes   = np.load(cfg.label_fold_dir+'test_ids.npy')
 
-    train_labels = get_labels(all_labels, label_train_nodes, vocab) 
-    val_labels   = get_labels(all_labels, label_val_nodes  , vocab) 
+    train_labels      = get_labels(all_labels, label_train_nodes, vocab)
+    val_labels        = get_labels(all_labels, label_val_nodes  , vocab)
     
-    train = DataSet(train_x, vocab, train_labels, dtype=dtype)
-    validation = DataSet(validation_x, vocab, val_labels, dtype=dtype)
+    train             = DataSet(train_x, vocab, train_labels, dtype=dtype)
+    validation        = DataSet(validation_x, vocab, val_labels, dtype=dtype)
 
     datasets_template = collections.namedtuple('Datasets_template', ['train','validation'])
-    Datasets = datasets_template(train=train,validation=validation)
+    Datasets          = datasets_template(train=train,validation=validation)
 
     return Datasets
 

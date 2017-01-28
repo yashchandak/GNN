@@ -63,7 +63,8 @@ class Network(object):
             # U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_vocab])
             U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size, self.config.data_sets._len_vocab])
             proj_b = tf.get_variable('Bias', [self.config.data_sets._len_vocab])
-            outputs = [tf.matmul(o, U) + proj_b for o in rnn_outputs]
+            #outputs = [tf.matmul(o, U) + proj_b for o in rnn_outputs]
+            outputs = [tf.matmul(o, tf.transpose(self.embedding)) for o in rnn_outputs]
 
             with tf.variable_scope('label'):
                 # U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_labels])
@@ -139,8 +140,8 @@ class Network(object):
                     RNN_H = tf.get_variable('HMatrix',[self.num_units, self.num_units])
                     RNN_I = tf.get_variable('IMatrix', [x_size,self.num_units])
                     RNN_b = tf.get_variable('B',[hidden_size])
-                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
-                    #state = tf.nn.tanh(tf.matmul(state,RNN_H) + x + RNN_b)
+                    #state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
+                    state = tf.matmul(state,RNN_H)+ x
                     #state to be passed on should be a tuple
                     return state, state
  

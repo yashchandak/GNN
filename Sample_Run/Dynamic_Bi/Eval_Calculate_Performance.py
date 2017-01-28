@@ -106,7 +106,7 @@ def evaluate(predictions, labels, threshold):
       k = np.sum(labels[i])
       pos = predictions[i].argsort()
       predictions[i].fill(0)
-      predictions[i][pos[-k:]] = 1
+      predictions[i][pos[-int(k):]] = 1
       
   #labels = labels.astype(int)
   coverage= coverage_error(labels, predictions)
