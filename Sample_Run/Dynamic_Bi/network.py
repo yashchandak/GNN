@@ -60,12 +60,14 @@ class Network(object):
         """
         
         with tf.variable_scope('Projection'):
-            U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_vocab])
+            # U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_vocab])
+            U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size, self.config.data_sets._len_vocab])
             proj_b = tf.get_variable('Bias', [self.config.data_sets._len_vocab])
             outputs = [tf.matmul(o, U) + proj_b for o in rnn_outputs]
 
             with tf.variable_scope('label'):
-                U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_labels])
+                # U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_labels])
+                U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size, self.config.data_sets._len_labels])
                 proj_b2 = tf.get_variable('Bias_label', [self.config.data_sets._len_labels])
                 outputs_labels = [tf.matmul(o, U2) + proj_b2 for o in rnn_outputs]
 
@@ -76,6 +78,7 @@ class Network(object):
 
 
     def predict2(self,inputs,keep_prob, _):
+        #Non-Dynamic Unidirectional RNN
         """Build the model up to where it may be used for inference.
         """
         hidden_size = self.config.mRNN._hidden_size
@@ -114,7 +117,33 @@ class Network(object):
 
         return rnn_outputs
 
-    def predict3(self, inputs, keep_prob, _):
+    def predict(self, inputs, keep_prob, seq_len):
+        #Uni-Directional Dynamic RNN
+        class MyCell(RNNCell):
+            #Define new kind of RNN cell
+            def __init__(self, num_units):
+                self.num_units = num_units
+
+            @property
+            def state_size(self):
+                return self.num_units
+
+            @property
+            def output_size(self):
+                return self.num_units
+
+            def __call__(self, x, state, scope=None):
+                with tf.variable_scope(scope or type(self).__name__):
+                    
+                    x_size = x.get_shape().as_list()[1]
+                    RNN_H = tf.get_variable('HMatrix',[self.num_units, self.num_units])
+                    RNN_I = tf.get_variable('IMatrix', [x_size,self.num_units])
+                    RNN_b = tf.get_variable('B',[hidden_size])
+                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
+                    #state = tf.nn.tanh(tf.matmul(state,RNN_H) + x + RNN_b)
+                    #state to be passed on should be a tuple
+                    return state, state
+ 
 
         hidden_size = self.config.mRNN._hidden_size
         num_layers  = self.config.mRNN._layers
@@ -125,24 +154,26 @@ class Network(object):
         with tf.variable_scope('InputDropout'):
             inputs = tf.pack([tf.nn.dropout(x,keep_prob) for x in inputs])
             
-        with tf.variable_scope('GRU'):
-            cell = tf.nn.rnn_cell.GRUCell(hidden_size)
+        with tf.variable_scope('MyCell'):
+            #cell = tf.nn.rnn_cell.GRUCell(hidden_size)
             #cell = BNLSTMCell(hidden_size)
+            cell = MyCell(hidden_size)
             cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = keep_prob)
-            cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers)
+            #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=False)
 
-            outputs, self.final_state = tf.nn.dynamic_rnn(cell, inputs, dtype=tf.float32, time_major = True)
+            #initState = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
+            outputs, self.final_state = tf.nn.dynamic_rnn(cell, inputs,
+                                                          sequence_length=seq_len, dtype=tf.float32, time_major = True)
 
-        outputs = tf.unpack(outputs,axis=0)
-        
+        outputs = tf.unpack(outputs,axis=0)        
         with tf.variable_scope('RNNDropout'):
-            outputs = [tf.nn.dropout(x,keep_prob) for x in outputs]
+            outputs = [tf.nn.dropout(x,keep_prob) for x in outputs]           
 
         return outputs
         
 
-    def predict(self, inputs, keep_prob, seq_len):
-
+    def predict1(self, inputs, keep_prob, seq_len):
+        #Bi-Directional Dynamic RNN
         class MyCell(RNNCell):
             #Define new kind of RNN cell
             def __init__(self, num_units):
@@ -286,14 +317,15 @@ class Network(object):
             tf.add_to_collection('total_loss', cross_entropy_emb)
 
         loss = tf.add_n(tf.get_collection('total_loss'))
-        
+        grads, = tf.gradients(cross_entropy_label, [self.embedding])       
+
         tf.summary.scalar('next_node_loss', cross_entropy_next)
         tf.summary.scalar('curr_label_loss', cross_entropy_label)
         tf.summary.scalar('label_similarity_loss', cross_entropy_label_similarity )
         tf.summary.scalar('emb_loss', cross_entropy_emb)
         tf.summary.scalar('total_loss', tf.reduce_sum(loss))
         
-        return [loss, cross_entropy_next, cross_entropy_label, cross_entropy_label_similarity, cross_entropy_emb]
+        return [loss, cross_entropy_next, cross_entropy_label, cross_entropy_label_similarity, cross_entropy_emb, grads]
 
     def training(self, loss, optimizer):
       """Sets up the training Ops.

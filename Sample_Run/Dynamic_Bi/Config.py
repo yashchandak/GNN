@@ -92,7 +92,7 @@ class Config(object):
 
             #optimizer
             self._parameters['optimizer'] = tf.train.AdamOptimizer(self._parameters['learning_rate'])
-            self._next_node_loss = False
+            self._next_node_loss = True
             self._curr_label_loss = True
             self._label_similarity_loss = False
             self._embedding_loss = False

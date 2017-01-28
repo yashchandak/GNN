@@ -56,6 +56,20 @@ class RNNLM_v1(object):
         # self.init = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
         self.init = tf.global_variables_initializer()#tf.initialize_all_variables()
         
+    def predict_results(self,sess, all_labels):
+        labels_orig, data = [], []
+        for k,v in all_labels.items():
+            labels_orig.append(v)
+            data.append([k])
+
+        #Replicate data on 2nd axis to meet the dimensions of data placeholder
+        #But since dynamic RNNs are used, only lengths of 'seq_length' are evaluated :)
+        data = np.tile(data, (1, self.config.num_steps))
+        feed_dict = {self.data_placeholder: data, self.keep_prob: 1, self.arch.initial_state: self.arch.initial_state.eval(), self.seq_len: [1]*len(data)}
+        labels_pred =  sess.run(self.arch.label_sigmoid, feed_dict=feed_dict)[0]
+
+        return perf.evaluate(labels_pred, labels_orig, 0)
+
     def load_data(self):
         # Get the 'encoded data'
         self.data_sets =  input_data.read_data_sets(self.config)
@@ -128,6 +142,7 @@ class RNNLM_v1(object):
         label_loss = []
         sim_loss = []
         emb_loss = []
+        grads    = []
         f1_micro, f1_macro = [], []
         total_steps = sum(1 for x in dataset.next_batch(self.config.batch_size,self.config.num_steps))	
 	#Sets to state to zero for a new epoch
@@ -155,17 +170,21 @@ class RNNLM_v1(object):
             label_loss.append(loss_value[2])
             sim_loss.append(loss_value[3])
             emb_loss.append(loss_value[4])
+            #print(loss_value[5])
+            grads.append(np.mean(loss_value[5][0]))
+           
 
             #print("\n\n\nPredLabels:", pred_labels)
 
             if verbose and step % verbose == 0:
                 metrics = [0]*20
                 if self.config.solver._curr_label_loss:
-                    metrics = perf.evaluate(pred_labels, label_batch_2, 0)
+                    # metrics = perf.evaluate(pred_labels, label_batch_2, 0)
+                    metrics = self.predict_results(sess, dataset.labels)
                     self.add_metrics(metrics)
                     f1_micro.append(metrics[3])
                     f1_macro.append(metrics[4])
-                sys.stdout.write('\r{} / {} : pp = {} : next = {} : label = {} : micro-F1  =  {} : macro-F1 = {} : sim = {} : emb = {}'.format(step, total_steps, np.exp(np.mean(total_loss)), np.mean(next_loss), np.mean(label_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(sim_loss), np.mean(emb_loss)))
+                print('%d/%d : pp = %0.3f : next = %0.3f : label = %0.3f : micro-F1 = %0.3f : macro-F1 = %0.3f : sim = %0.3f : emb = %0.3f : grads = %0.12f'%(step, total_steps, np.exp(np.mean(total_loss)), np.mean(next_loss), np.mean(label_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(sim_loss), np.mean(emb_loss), np.mean(grads)), end="\r")
                 sys.stdout.flush()
             
         if verbose:
