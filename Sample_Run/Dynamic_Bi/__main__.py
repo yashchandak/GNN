@@ -56,7 +56,7 @@ class RNNLM_v1(object):
         # self.init = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
         self.init = tf.global_variables_initializer()#tf.initialize_all_variables()
         
-    def predict_results(self,sess, all_labels):
+    def predict_results(self,sess, all_labels, return_labels = False):
         labels_orig, data = [], []
         for k,v in all_labels.items():
             labels_orig.append(v)
@@ -67,8 +67,10 @@ class RNNLM_v1(object):
         data = np.tile(data, (1, self.config.num_steps))
         feed_dict = {self.data_placeholder: data, self.keep_prob: 1, self.arch.initial_state: self.arch.initial_state.eval(), self.seq_len: [1]*len(data)}
         labels_pred =  sess.run(self.arch.label_sigmoid, feed_dict=feed_dict)[0]
-
-        return perf.evaluate(labels_pred, labels_orig, 0)
+        if return_labels:
+             return labels_pred
+        else
+             return perf.evaluate(labels_pred, labels_orig, 0)
 
     def load_data(self):
         # Get the 'encoded data'
@@ -495,6 +497,29 @@ def classify_and_save():
     liblinear.evaluate(e_conf)
     print("------------ Results saved to: ", e_conf.results_folder)    
 
+def predict_and_save():
+    print('############## Save Label Prediction Module ')
+    config = deepcopy(cfg)
+    model,sess = init_Model(config)
+    vocab = model.data_sets.train.vocab
+
+    all_labels = loadmat(config.label_dir)['labels']
+    nodes = all_labels.shape[0]
+    all_labels = input_data.get_labels(all_labels, [True]*nodes, vocab)
+
+    pred_labels    = model.predict_results(sess, all_labels, return_labels=True)
+    ordered_labels = np.zeros(all_labels.shape)\
+
+    #Re-order the predictions based on actual node number 
+    #pred_labels are in order of keys sequence of all_labels
+    for idx, k in enumerate(all_labels.keys()):
+        ordered_labels[int(vocab.decode(k)) - 1] = pred_labels[idx]
+
+    #Ignore the first column of label prediction (It is used for marking <EOS> and unlabeled data)
+    ordered_labels = ordered_labels[:,1:]
+
+    fn = config.result_dir+config.dataset_name+'_predicted_labels.csv'
+    np.savetxt(fn, ordered_labels, delimiter=',')
 
 def execute():
     with tf.device('/gpu:0'):
@@ -504,7 +529,8 @@ def execute():
         save_Embeddings_DNNModel()
         visualize_Embeddings_DNNModel() 
         #generate_and_reconstruct()
-        classify_and_save()  
+        classify_and_save() 
+        predict_and_save() 
         return err
     
 if __name__ == "__main__":
@@ -512,8 +538,7 @@ if __name__ == "__main__":
     
     meta_param = {#('dataset_name',):['blogcatalog_ncc'],
                   #('solver', 'learning_rate'): [0.001],
-                  ###[IMP: ] Bug here: If retrain is false, all the other saving/visualizing etc functions remove the folder. 
-                  #('retrain',): [False],   
+                  #('retrain',): [False],
                   ('debug',): [False],
                   ('max_epochs',): [1000]
     }
