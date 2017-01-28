@@ -34,8 +34,8 @@ class Network(object):
                   a tensor of shape (batch_size, embed_size).
         """
         
-        embedding = tf.get_variable( 'Embedding',[self.config.data_sets._len_vocab, self.config.mRNN._embed_size], trainable=True)
-        inputs = tf.nn.embedding_lookup(embedding, inputs)
+        self.embedding = tf.get_variable( 'Embedding',[self.config.data_sets._len_vocab, self.config.mRNN._embed_size], trainable=True)
+        inputs = tf.nn.embedding_lookup(self.embedding, inputs)
         inputs = [tf.squeeze(x, [1]) for x in tf.split(1, self.config.num_steps, inputs)]
         return inputs
 
@@ -75,7 +75,7 @@ class Network(object):
         return [outputs, outputs_labels]
 
 
-    def predict2(self,inputs,keep_prob):
+    def predict2(self,inputs,keep_prob, _):
         """Build the model up to where it may be used for inference.
         """
         hidden_size = self.config.mRNN._hidden_size
@@ -114,7 +114,7 @@ class Network(object):
 
         return rnn_outputs
 
-    def predict3(self, inputs, keep_prob):
+    def predict3(self, inputs, keep_prob, _):
 
         hidden_size = self.config.mRNN._hidden_size
         num_layers  = self.config.mRNN._layers

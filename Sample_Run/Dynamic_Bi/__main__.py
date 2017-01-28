@@ -128,6 +128,7 @@ class RNNLM_v1(object):
         label_loss = []
         sim_loss = []
         emb_loss = []
+        f1_micro, f1_macro = [], []
         total_steps = sum(1 for x in dataset.next_batch(self.config.batch_size,self.config.num_steps))	
 	#Sets to state to zero for a new epoch
         state = self.arch.initial_state.eval()
@@ -162,12 +163,14 @@ class RNNLM_v1(object):
                 if self.config.solver._curr_label_loss:
                     metrics = perf.evaluate(pred_labels, label_batch_2, 0)
                     self.add_metrics(metrics)
-                sys.stdout.write('\r{} / {} : pp = {} : next = {} : label = {} : micro-F1  =  {} : macro-F1 = {} : sim = {} : emb = {}'.format(step, total_steps, np.exp(np.mean(total_loss)), np.mean(next_loss), np.mean(label_loss), metrics[3], metrics[4], np.mean(sim_loss), np.mean(emb_loss)))
+                    f1_micro.append(metrics[3])
+                    f1_macro.append(metrics[4])
+                sys.stdout.write('\r{} / {} : pp = {} : next = {} : label = {} : micro-F1  =  {} : macro-F1 = {} : sim = {} : emb = {}'.format(step, total_steps, np.exp(np.mean(total_loss)), np.mean(next_loss), np.mean(label_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(sim_loss), np.mean(emb_loss)))
                 sys.stdout.flush()
             
         if verbose:
             sys.stdout.write('\r')
-        return np.exp(np.mean(total_loss)),np.mean(total_loss)
+        return np.exp(np.mean(total_loss)),np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro)
 
     def fit(self, sess):
         #define parametrs for early stopping early stopping
@@ -193,14 +196,14 @@ class RNNLM_v1(object):
             epoch = self.arch.global_step.eval(session=sess)
 
             start_time = time.time()
-            tr_pp, average_loss = self.run_epoch(sess,self.data_sets.train,train_op=self.train,summary_writer=self.summary_writer_train)
+            tr_pp, average_loss, tr_micro, tr_macro = self.run_epoch(sess,self.data_sets.train,train_op=self.train,summary_writer=self.summary_writer_train)
             duration = time.time() - start_time
 
             if (epoch % self.config.val_epochs_freq == 0):
-                val_pp,val_loss = self.run_epoch(sess,self.data_sets.validation,summary_writer=self.summary_writer_val)
+                val_pp,val_loss, val_micro, val_macro = self.run_epoch(sess,self.data_sets.validation,summary_writer=self.summary_writer_val)
 
-                print('\n Epoch %d: tr_loss = %.2f, val_loss = %.2f || tr_pp = %.2f, val_pp = %.2f  (%.3f sec)'
-                      % (epoch, average_loss, val_loss, tr_pp, val_pp, duration))
+                print('\n Epoch %d: tr_loss = %.2f, val_loss = %.2f || tr_pp = %.2f, val_pp = %.2f || tr_micro = %.2f, val_micro = %.2f || tr_macro = %.2f, val_macro = %.2f  (%.3f sec)'
+                      % (epoch, average_loss, val_loss, tr_pp, val_pp, tr_micro, val_micro, tr_macro, val_macro, duration))
                 	
                 # Save model only if the improvement is significant
                 if (val_loss < validation_loss * improvement_threshold) and (epoch > self.config.save_epochs_after):
@@ -476,11 +479,11 @@ def classify_and_save():
 
 def execute():
     with tf.device('/gpu:0'):
-        #err = train_DNNModel() 
+        err = train_DNNModel() 
         #test_DNNModel() 
         #interactive_generate_text_DNNModel()
-        #save_Embeddings_DNNModel()
-        #visualize_Embeddings_DNNModel() 
+        save_Embeddings_DNNModel()
+        visualize_Embeddings_DNNModel() 
         #generate_and_reconstruct()
         classify_and_save()  
         return err
@@ -488,14 +491,14 @@ def execute():
 if __name__ == "__main__":
     #remove parameter dictionary
     
-    meta_param = {('dataset_name',):['blogcatalog_ncc'],
-                  ('solver', 'learning_rate'): [0.001],
-                  ('retrain',): [True],
+    meta_param = {#('dataset_name',):['blogcatalog_ncc'],
+                  #('solver', 'learning_rate'): [0.001],
+                  #('retrain',): [True],
                   ('debug',): [False],
                   ('max_epochs',): [1000]
     }
 
-    variations = len(meta_param[('dataset_name',)])
+    variations = len(meta_param[('debug',)])
 
     #Make sure number of variants are equal
     for k,v in meta_param.items():
