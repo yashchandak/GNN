@@ -13,7 +13,7 @@ class Config():
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
     
     def __init__(self, dataset, embed_file):
-        self.root_path ='/home/test/Project/Sample_Run/'
+        self.root_path = '/home/test/Project/Sample_Run/'
         self.project_name = 'Dynamic_Bi/'
         self.logs_d = '/Logs/'
 

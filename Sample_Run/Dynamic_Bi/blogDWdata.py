@@ -26,8 +26,8 @@ class DataSet(object):
     """Return the next `batch_size` examples from this data set.
        Takes Y in one-hot encodings only"""
     for x,y,y2,seq_len in ptb_iterator(self._x, batch_size, num_steps,shuffle, self.labels):
-        yield x,y,y2,seq_len 
-
+        yield x,y,y2,seq_len
+ 
 def get_ptb_dataset(dataset):
     for line in open(dataset):
       #Starting and ending is the same symbol

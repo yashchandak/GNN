@@ -78,7 +78,7 @@ class Network(object):
         return [outputs, outputs_labels]
 
 
-    def predict2(self,inputs,keep_prob, _):
+    def predict(self,inputs,keep_prob, _):
         #Non-Dynamic Unidirectional RNN
         """Build the model up to where it may be used for inference.
         """
@@ -108,7 +108,9 @@ class Network(object):
                 RNN_H = tf.get_variable('HMatrix',[hidden_size,hidden_size])
                 RNN_I = tf.get_variable('IMatrix', [embed_size,hidden_size])
                 RNN_b = tf.get_variable('B',[hidden_size])
-                state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(current_input,RNN_I) + RNN_b)
+                #state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(current_input,RNN_I) + RNN_b)
+
+                state = tf.matmul(state,RNN_H) + current_input
                 rnn_outputs.append(state)
 		#How to pass state info for subsequent sentences
             self.final_state = rnn_outputs[-1]
@@ -118,7 +120,7 @@ class Network(object):
 
         return rnn_outputs
 
-    def predict(self, inputs, keep_prob, seq_len):
+    def predict2(self, inputs, keep_prob, seq_len):
         #Uni-Directional Dynamic RNN
         class MyCell(RNNCell):
             #Define new kind of RNN cell
@@ -262,10 +264,20 @@ class Network(object):
         
         if self.config.solver._next_node_loss:
             #<EOS> and <UNK> get encoded as 1 and 0 respectively
+            #Count loss only for actual nodes
+            
+            raw_inp1 = tf.greater(tf.slice(raw_inp, [0,0],[-1,  1]), -1)   #Make first column all True
+            raw_inp2 = tf.greater(tf.slice(raw_inp, [0,1],[-1, -1]),  1)   #Make only non (<EOS>,<UNK>) True
+            raw_inp  = tf.concat(1, [raw_inp1, raw_inp2])                  #concatenate back to original shape
+            raw_inp  = tf.transpose(raw_inp)                               #Transpose raw_inp from batch*step to step*batch
+            mask = [tf.reshape(tf.cast(raw_inp, tf.float32), [-1])]        #Convert from bool to float and flatten array
+
+
+            #<EOS> and <UNK> get encoded as 1 and 0 respectively
             #Transpose raw_inp from batch*step to shape*batch
             #Count loss only for actual nodes
             #Convert from bool to float and flatten array
-            mask = [tf.reshape(tf.cast(tf.greater(tf.transpose(raw_inp), 1), tf.float32), [-1])]
+            #mask = [tf.reshape(tf.cast(tf.greater(tf.transpose(raw_inp), 0), tf.float32), [-1])]
 
             #Vector to weigh different word losses
             #all_ones = [tf.ones([self.config.batch_size * self.config.num_steps])]
