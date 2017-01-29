@@ -141,7 +141,7 @@ class Network(object):
                     RNN_I = tf.get_variable('IMatrix', [x_size,self.num_units])
                     RNN_b = tf.get_variable('B',[hidden_size])
                     #state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
-                    state = tf.matmul(state,RNN_H)+ x
+                    state = tf.matmul(state,RNN_H) + x
                     #state to be passed on should be a tuple
                     return state, state
  
@@ -163,8 +163,7 @@ class Network(object):
             #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=False)
 
             #initState = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
-            outputs, self.final_state = tf.nn.dynamic_rnn(cell, inputs,
-                                                          sequence_length=seq_len, dtype=tf.float32, time_major = True)
+            outputs, self.final_state = tf.nn.dynamic_rnn(cell, inputs, sequence_length=seq_len, dtype=tf.float32, time_major = True)
 
         outputs = tf.unpack(outputs,axis=0)        
         with tf.variable_scope('RNNDropout'):
@@ -195,8 +194,8 @@ class Network(object):
                     RNN_H = tf.get_variable('HMatrix',[self.num_units, self.num_units])
                     RNN_I = tf.get_variable('IMatrix', [x_size,self.num_units])
                     RNN_b = tf.get_variable('B',[hidden_size])
-                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
-                    #state = tf.nn.tanh(tf.matmul(state,RNN_H) + x + RNN_b)
+                    #state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(x,RNN_I) + RNN_b)
+                    state = tf.nn.tanh(tf.matmul(state,RNN_H) + x + RNN_b)
                     #state to be passed on should be a tuple
                     return state, state
  
@@ -240,7 +239,7 @@ class Network(object):
 
         
 
-    def loss(self, predictions, labels, labels_2, inputs):
+    def loss(self, predictions, labels, labels_2, inputs, raw_inp):
         """Calculates the loss from the predictions (logits?) and the labels.
         """
         next_word = labels
@@ -262,12 +261,19 @@ class Network(object):
 
         
         if self.config.solver._next_node_loss:
+            #<EOS> and <UNK> get encoded as 1 and 0 respectively
+            #Transpose raw_inp from batch*step to shape*batch
+            #Count loss only for actual nodes
+            #Convert from bool to float and flatten array
+            mask = [tf.reshape(tf.cast(tf.greater(tf.transpose(raw_inp), 1), tf.float32), [-1])]
+
             #Vector to weigh different word losses
-            all_ones = [tf.ones([self.config.batch_size * self.config.num_steps])]
+            #all_ones = [tf.ones([self.config.batch_size * self.config.num_steps])]
+
             #cross entropy loss for next word prediction
-            cross_entropy_next = sequence_loss([prediction_word],[tf.reshape(next_word, [-1])], all_ones, self.config.data_sets._len_vocab)
+            cross_entropy_next = sequence_loss([prediction_word],[tf.reshape(next_word, [-1])], mask, self.config.data_sets._len_vocab)
             tf.add_to_collection('total_loss', cross_entropy_next)
-            
+
         if self.config.solver._curr_label_loss:
             #Get the slice of tensor representing label '0' for all batch.seq
             #'0' label is assigned for <EOS> and the nodes whose labels are not known
@@ -318,7 +324,7 @@ class Network(object):
             tf.add_to_collection('total_loss', cross_entropy_emb)
 
         loss = tf.add_n(tf.get_collection('total_loss'))
-        grads, = tf.gradients(cross_entropy_label, [self.embedding])       
+        grads, = tf.gradients(loss, [self.embedding])       
 
         tf.summary.scalar('next_node_loss', cross_entropy_next)
         tf.summary.scalar('curr_label_loss', cross_entropy_label)

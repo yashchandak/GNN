@@ -4,13 +4,13 @@ import sys, os, shutil
 class Config(object):
 
 
-    codebase_root_path = '/home/yash/Project/GNN/Sample_Run/'
+    codebase_root_path = '/home/test/Project/Sample_Run/'
     sys.path.insert(0, codebase_root_path)
 
     ####  Directory paths ####
     #Folder name and project name is the same
     project_name = 'Dynamic_Bi'
-    dataset_name = 'karate'
+    dataset_name = 'blogcatalog_ncc'
     train_percent = 50
     train_fold  = 1
     
@@ -26,7 +26,7 @@ class Config(object):
     debug = False
 
     # Batch size
-    batch_size = 25
+    batch_size = 32
     num_steps = 7
     #Number of steps to run trainer
     max_epochs = 1000
@@ -67,7 +67,6 @@ class Config(object):
             if not self.retrain:
             #path exists but if retrain in False
             #then replace previous folder with new folder
-                print(path)
                 shutil.rmtree(path)
                 os.mkdir(path)
         
@@ -89,12 +88,12 @@ class Config(object):
         def __init__(self):
             self._parameters = {}
             #Initial learning rate
-            self._parameters['learning_rate'] = 0.01
+            self._parameters['learning_rate'] = 0.001
 
             #optimizer
             self._parameters['optimizer'] = tf.train.AdamOptimizer(self._parameters['learning_rate'])
             self._next_node_loss = True
-            self._curr_label_loss = True
+            self._curr_label_loss = False
             self._label_similarity_loss = False
             self._embedding_loss = False
             

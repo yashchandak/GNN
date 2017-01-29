@@ -51,7 +51,7 @@ def ptb_iterator(raw_data, batch_size, num_steps,shuffle,label):
 
     if batch_len % (num_steps+1) != 0:
         if (data_len) % (num_steps+1) !=0:
-            print ('Data is not a multiple of num_steps, consider changing number of sequences')
+            print( 'Data is not a multiple of num_steps, consider changing number of sequences')
     
         x = [x for x in range(2,int(data_len/2)+1) if (data_len/(num_steps+1)) %x ==0 and x < 1000]
         print ('\nTry these batch sizes',x)

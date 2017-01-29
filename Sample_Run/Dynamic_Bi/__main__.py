@@ -3,6 +3,7 @@ import os.path
 import time, math, sys
 from copy import deepcopy
 import scipy.sparse as sps
+from scipy.io import loadmat
 import numpy as np
 from sklearn.preprocessing import normalize
 
@@ -45,7 +46,7 @@ class RNNLM_v1(object):
         #output_label = tf.reshape(tf.concat(1, self.outputs[1]), [-1, self.config.data_sets._len_labels])
         output_label =  self.outputs[1]
         
-        self.loss = self.arch.loss([output_next, output_label], self.label_placeholder, self.label_2_placeholder, self.inputs)
+        self.loss = self.arch.loss([output_next, output_label], self.label_placeholder, self.label_2_placeholder, self.inputs, self.data_placeholder)
         self.optimizer = self.config.solver._parameters['optimizer']
         self.train = self.arch.training(self.loss,self.optimizer)
 
@@ -69,7 +70,7 @@ class RNNLM_v1(object):
         labels_pred =  sess.run(self.arch.label_sigmoid, feed_dict=feed_dict)[0]
         if return_labels:
              return labels_pred
-        else
+        else:
              return perf.evaluate(labels_pred, labels_orig, 0)
 
     def load_data(self):

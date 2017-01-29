@@ -13,7 +13,7 @@ class Config():
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
     
     def __init__(self, dataset, embed_file):
-        self.root_path = '/home/yash/Project/GNN/Sample_Run/'
+        self.root_path ='/home/test/Project/Sample_Run/'
         self.project_name = 'Dynamic_Bi/'
         self.logs_d = '/Logs/'
 
@@ -22,7 +22,7 @@ class Config():
         self.embed_file = embed_file
 
         self.input_len = 128
-        self.label_len = 4
+        self.label_len = 39
         
         self.hidden = 256
 
@@ -32,14 +32,13 @@ class Config():
 
         self.metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
                         'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss']
-        self.training_percents = [50]
+        self.training_percents = [10,50,90]
         self.threshold = False
-        self.num_shuffles = 1
+        self.num_shuffles = 5
 	
         self.init2()
 
     def init2(self):
-        print(self.dataset, self.embed_file)	
         self.optimizer   = tf.train.AdamOptimizer(self.learning_rate)
         
         self.directory   = self.root_path + 'Datasets/' + self.dataset
