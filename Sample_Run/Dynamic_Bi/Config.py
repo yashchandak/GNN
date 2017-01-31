@@ -95,7 +95,8 @@ class Config(object):
             self._next_node_loss = True
             self._curr_label_loss = False
             self._label_similarity_loss = False
-            self._embedding_loss = False
+            self._embedding_loss = False 
+            self._L2loss = True
             
     class Architecture(object):
         def __init__(self):

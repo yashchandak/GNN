@@ -335,6 +335,11 @@ class Network(object):
             cross_entropy_emb = tf.reduce_sum(tf.reduce_mean(mse_emb,1) * label_diffusion) * self.config.data_sets._emb_factor
             tf.add_to_collection('total_loss', cross_entropy_emb)
 
+        if self.config.solver._L2loss:
+            vars   = tf.trainable_variables() 
+            lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars])*0.00001
+            tf.add_to_collection('total_loss', lossL2)
+
         loss = tf.add_n(tf.get_collection('total_loss'))
         grads, = tf.gradients(loss, [self.embedding])       
 
