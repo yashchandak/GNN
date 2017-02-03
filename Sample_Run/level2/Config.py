@@ -4,12 +4,12 @@ import sys, os, shutil
 class Config(object):
 
 
-    codebase_root_path = '/home/yash/Project/GNN/Sample_Run/'
+    codebase_root_path = '/home/priyesh/Desktop/Codes/Sample_Run/'
     sys.path.insert(0, codebase_root_path)
 
     ####  Directory paths ####
     #Folder name and project name is the same
-    project_name = 'level2'
+    project_name = 'level2_2'
     dataset_name = 'blogcatalog_ncc'
     train_percent = 50
     train_fold  = 1
@@ -106,7 +106,7 @@ class Config(object):
             #Mention the number of layers
             self._parameters['layers'] = [100,250]
             #dropout
-            self._dropout = 0.9
+            self._dropout = 0.9 #hard-coded in __main__
 
     class Data_sets(object):
         def __init__(self):
@@ -122,7 +122,7 @@ class Config(object):
             #self._num_steps = 10 # Problem with reusing variable
             self._embed_size = 128
             self._hidden_size = 128
-            self._dropout = 0.9
+            self._dropout = 1
             self._layers = 1
 
     solver = Solver()

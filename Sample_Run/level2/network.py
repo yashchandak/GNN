@@ -83,8 +83,8 @@ class Network(object):
         with tf.variable_scope('Projection'):
             U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size, self.config.data_sets._len_vocab])
             proj_b = tf.get_variable('Bias', [self.config.data_sets._len_vocab])
-            #outputs = [tf.matmul(o, U) + proj_b for o in rnn_outputs]
-            outputs = [tf.matmul(o, tf.transpose(self.embedding)) for o,_ in rnn_outputs]
+            outputs = [tf.matmul(o, U) + proj_b for o,_ in rnn_outputs]
+            #outputs = [tf.matmul(o, tf.transpose(self.embedding)) for o,_ in rnn_outputs]
 
             with tf.variable_scope('label'):
                 # U2 = tf.get_variable('Matrix_label', [self.config.mRNN._hidden_size*2, self.config.data_sets._len_labels])
@@ -115,6 +115,7 @@ class Network(object):
                 
         with tf.variable_scope('RNN') as scope:
             state_label = self.initial_state_label
+            lstm_state   = (self.initial_state_label,self.initial_state_label)
             state_struc = self.initial_state
 
             RNN_H_label = tf.get_variable('HMatrix_label',[hidden_size,hidden_size])
@@ -123,22 +124,37 @@ class Network(object):
             RNN_I = tf.get_variable('Input_Matrix', [embed_size,hidden_size])
             RNN_b = tf.get_variable('Bias',[hidden_size])
 
-            RNN_g = tf.get_variable('W_gate', [label_len + hidden_size, label_len])
+            self.RNN_g = tf.get_variable('W_gate', [label_len + hidden_size, label_len])
             RNN_l = tf.get_variable('W_label',[label_len + embed_size,  label_len])
 
             self.variable_summaries(RNN_H_label, 'HMatrix_label')
             self.variable_summaries(RNN_H_struc, 'HMatrix_struc')
             self.variable_summaries(RNN_I, 'IMatrix')
             self.variable_summaries(RNN_b, 'Bias')
+            self.variable_summaries(self.RNN_g, 'gate')
+            self.variable_summaries(RNN_l, 'label')
+
+
+            #cell = tf.nn.rnn_cell.GRUCell(label_len)
+            cell = tf.nn.rnn_cell.LSTMCell(label_len)
 
             rnn_outputs = []
             for tstep, current_input in enumerate(inputs):
                 #state = tf.nn.tanh(tf.matmul(state,RNN_H) + tf.matmul(current_input,RNN_I) + RNN_b)
                 state_struc = tf.matmul(state_struc, RNN_H_struc) + current_input
                 
-                gate = tf.nn.sigmoid(tf.matmul(tf.concat(1, [state_label, state_struc]), RNN_g))
-                state_label = state_label * gate
-                state_label = tf.matmul(tf.concat(1, [state_label, current_input]), RNN_l)
+                #gate = tf.nn.sigmoid(tf.matmul(tf.concat(1, [state_label, state_struc]), self.RNN_g))
+                
+                #state_drop = tf.nn.dropout(state_label*gate, 1 - keep_prob)
+                struc_drop = tf.nn.dropout(state_struc, keep_prob)
+                #input_drop = tf.nn.dropout(current_input, keep_prob)
+                
+                #state_label = tf.matmul(tf.concat(1, [state_label*gate, current_input]), RNN_l) #No-dropout
+                #state_label = tf.matmul(tf.concat(1, [state_drop, input_drop]), RNN_l)          #With dropout
+                #state_label, _ = cell.__call__(struc_drop, state_label)                         #GRU
+                state_label, lstm_state = cell.__call__(struc_drop, lstm_state)                  #LSTM
+
+                scope.reuse_variables()
                 rnn_outputs.append((state_struc, state_label))
 		#How to pass state info for subsequent sentences
             self.final_state = rnn_outputs[-1]
@@ -414,7 +430,8 @@ class Network(object):
             tf.add_to_collection('total_loss', lossL2)
 
         loss = tf.add_n(tf.get_collection('total_loss'))
-        grads, = tf.gradients(loss, [self.embedding])       
+        grads, = tf.gradients(loss, [self.embedding])    
+        #grads, = tf.gradients(loss, [self.RNN_g])      
 
         tf.summary.scalar('next_node_loss', cross_entropy_next)
         tf.summary.scalar('curr_label_loss', cross_entropy_label)

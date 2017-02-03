@@ -57,7 +57,7 @@ class RNNLM_v1(object):
         # self.init = tf.group(tf.initialize_all_variables(), tf.initialize_local_variables())
         self.init = tf.global_variables_initializer()#tf.initialize_all_variables()
         
-    def predict_results(self,sess, all_labels, return_labels = False):
+    def predict_results(self,sess, all_labels, return_labels = False, keep_prob=1):
         labels_orig, all_data, labels_pred = [], [], []
         diff = 0
         
@@ -76,7 +76,7 @@ class RNNLM_v1(object):
                 data.extend([[0]]*diff)
                 
             data = np.tile(data, (1, self.config.num_steps))
-            feed_dict = {self.data_placeholder: data, self.keep_prob: 1, self.arch.initial_state: self.arch.initial_state.eval(), self.seq_len: [1]*len(data)}
+            feed_dict = {self.data_placeholder: data, self.keep_prob:  keep_prob, self.arch.initial_state: self.arch.initial_state.eval(), self.seq_len: [7]*len(data)}
             labels_pred.extend(sess.run(self.arch.label_sigmoid, feed_dict=feed_dict)[0])
 
         labels_pred = labels_pred[: -diff] #Ignore the labels predicted for 0 paddings
@@ -145,7 +145,7 @@ class RNNLM_v1(object):
         summary_writer.flush()
 
 
-    def run_epoch(self, sess, dataset, train_op=None, summary_writer=None,verbose=1000):
+    def run_epoch(self, sess, dataset, train_op=None, summary_writer=None,verbose=500):
         if not train_op :
             train_op = tf.no_op()
             keep_prob = 1
@@ -174,7 +174,7 @@ class RNNLM_v1(object):
 	    #Writes loss summary @last step of the epoch
             if (step+1) < total_steps:
                 _, loss_value, state, pred_labels = sess.run([train_op, self.loss, self.arch.final_state, self.arch.label_sigmoid], feed_dict=feed_dict)
-            else:
+            if step%verbose == 0:
                 _, loss_value, state, summary, pred_labels = sess.run([train_op, self.loss, self.arch.final_state,self.summary,self.arch.label_sigmoid], feed_dict=feed_dict)
                 if summary_writer != None:
                     summary_writer.add_summary(summary,self.arch.global_step.eval(session=sess))
@@ -195,7 +195,7 @@ class RNNLM_v1(object):
                 metrics = [0]*20
                 if self.config.solver._curr_label_loss:
                     # metrics = perf.evaluate(pred_labels, label_batch_2, 0)
-                    metrics = self.predict_results(sess, dataset.labels)
+                    metrics = self.predict_results(sess, dataset.labels, False, keep_prob)
                     self.add_metrics(metrics)
                     f1_micro.append(metrics[3])
                     f1_macro.append(metrics[4])
