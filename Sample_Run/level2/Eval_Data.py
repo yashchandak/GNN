@@ -20,7 +20,9 @@ class Data():
 
         #Get the positions where boolean values are True
         #concatenate training and validation used for language model
-        self.training = np.concatenate((np.where(training)[0], np.where(validation)[0]))
+        #self.training = np.concatenate((np.where(training)[0], np.where(validation)[0]))
+        self.training = np.where(training)[0]
+        self.validation = np.where(validation)[0]
         self.test     = np.where(np.load(self.cfg.directory +'labels/'+str(percent)+'/'+str(fold)+'/test_ids.npy' ))[0]
 
 
@@ -57,6 +59,7 @@ class Data():
         #Batch-wise feeding for Neural net based classifier
         inp_nodes  = np.zeros((self.cfg.batch_size, self.cfg.input_len))
         inp_labels = np.zeros((self.cfg.batch_size, self.cfg.label_len))
+        l = len(self.training)
         if self.has_more:
             for i, val in enumerate(self.training[self.index: self.index+self.cfg.batch_size]):              
                 inp_nodes[i] = self.embeddings[int(val)]
@@ -64,12 +67,30 @@ class Data():
 
             self.index += self.cfg.batch_size
 
+            if self.index - l > 0:
+                #This was the last batch
+                self.has_more = False
+
         #Check if next batch is possible
-        if self.index+self.cfg.batch_size >= len(self.training):
-            self.has_more = False
+        #if self.index+self.cfg.batch_size >= len(self.training):
+        #    self.has_more = False
 
         return inp_nodes, inp_labels
 
+    def get_validation(self, test=False):
+        if test:
+            data = self.test
+        else:
+            data = self.validation
+  
+        inp_nodes  = np.zeros((len(data), self.cfg.input_len))
+        inp_labels = np.zeros((len(data), self.cfg.label_len))
+        
+        for i,val in  enumerate(data):
+            inp_nodes[i] = self.embeddings[val]
+            inp_labels[i] = self.labels[val]
+
+        return inp_nodes, inp_labels
 
     def get_all_nodes_labels(self, data):
         #Get the embedding and corresponding labels at once for all nodes

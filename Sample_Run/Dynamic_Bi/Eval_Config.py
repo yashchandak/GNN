@@ -3,7 +3,7 @@ import sys, os, shutil
 
 class Config():
 
-    max_epochs = 200 #Number of steps to run trainer
+    max_epochs = 1000 #Number of steps to run trainer
     val_epochs_freq = 25  #Validation frequence    
     save_epochs_after= 0 #Model save frequency
     retrain = False
@@ -14,7 +14,7 @@ class Config():
     
     def __init__(self, dataset, embed_file):
         self.root_path = '/home/test/Project/Sample_Run/'
-        self.project_name = 'Dynamic_Bi/'
+        self.project_name = 'level2_2/'
         self.logs_d = '/Logs/'
 
 
@@ -23,17 +23,16 @@ class Config():
 
         self.input_len = 128
         self.label_len = 39
-        
-        self.hidden = 256
+        self.threshold = False
 
-        self.batch_size = 32
+        self.hidden = 0
+        self.batch_size = 64
         self.learning_rate = 0.001
-        self.drop = 0.8
+        self.drop = 0.9
 
         self.metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
                         'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss']
         self.training_percents = [10,50,90]
-        self.threshold = False
         self.num_shuffles = 5
 	
         self.init2()

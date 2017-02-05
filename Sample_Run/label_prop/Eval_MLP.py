@@ -20,7 +20,7 @@ class Network:
         cross_entropy = -1*tf.reduce_mean(tf.reduce_sum(cross_loss,1))
 
         vars   = tf.trainable_variables() 
-        lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars])*0.00001
+        lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars])*0.000 #macro-F! improves when L2 loss is set to 0
     
         total_loss = cross_entropy + lossL2
         return total_loss
@@ -42,7 +42,7 @@ class Network:
                 W2 = self.weight_variable('weight2', [self.cfg.hidden, self.cfg.label_len] )
                 b2 = self.bias_variable( 'bias2', [self.cfg.label_len])
             
-                hidden = tf.tanh(tf.matmul(x, W1) + b1)
+                hidden = tf.nn.tanh(tf.matmul(x, W1) + b1)
                 hidden_drop = tf.nn.dropout(hidden, keep_prob)
                 
                 self.y_pred = tf.sigmoid(tf.matmul(hidden_drop, W2) + b2)
@@ -51,13 +51,12 @@ class Network:
                 W1 = self.weight_variable('weight1',[self.cfg.input_len, self.cfg.label_len] )
                 b1 = self.bias_variable( 'bias1', [self.cfg.label_len])
 
-                self.y_pred = tf.sigmoid(tf.matmul(x, W1) + b1)
+                self.y_pred = tf.nn.sigmoid(tf.matmul(x, W1) + b1)
 
         return self.y_pred
     
         
     def train(self, loss, optimizer):
-        #tf.train.AdamOptimizer(cfg.learning_rate)
         train_step = optimizer.minimize(loss)
         return train_step
 
@@ -75,6 +74,7 @@ class Model:
         self.loss     = self.net.loss(self.y_pred, self.y)
         self.train    = self.net.train(self.loss, self.optimizer)
 
+        self.saver = tf.train.Saver()
         self.init = tf.global_variables_initializer()
 
     def add_placeholders(self):
@@ -95,22 +95,20 @@ class Model:
             sys.stdout.flush()
             i += 1
 
-        #metrics = perf.evaluate(y_, labels)
-        #print("\nTraining error\n")
-        #self.print_metrics(metrics)
-
         self.data.reset()
         return np.mean(err)
 
 
-    def run_eval(self, sess):        
+    def run_eval(self, sess, test=False, metrics=False):        
         #check Evaluation dataset
-        inputs_valid, labels_valid = self.data.get_validation()
+        inputs_valid, labels_valid = self.data.get_validation(test)
         feed_dict = {self.x:inputs_valid, self.y:labels_valid, self.keep_prob:self.config.drop}
         y_, loss = sess.run([self.y_pred, self.loss], feed_dict=feed_dict)
-        metrics = perf.evaluate(y_, labels_valid, self.config.threshold)
-
-        return loss, metrics
+        if metrics:
+            metrics = perf.evaluate(y_, labels_valid, self.config.threshold)
+            return loss, metrics
+        else:
+            return loss
 
 
     def print_metrics(self, inp):
@@ -125,7 +123,7 @@ class Model:
         patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
         improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
 
-        validation_loss = 1e6
+        validation_loss = 1e5
         step = 1
         best_step = -1
         losses = []
@@ -139,7 +137,7 @@ class Model:
 
 
             if (step % self.config.val_epochs_freq == 0):
-                val_loss, metrics = self.run_eval(sess)
+                val_loss = self.run_eval(sess)
 
                 sys.stdout.write('\n Epoch %d: tr_loss = %.2f, val_loss = %.2f  (%.3f sec)'% (step, average_loss, val_loss, duration))
                 sys.stdout.flush()	
@@ -150,6 +148,7 @@ class Model:
                     best_step = step
                     patience = step + max(self.config.val_epochs_freq,self.config.patience_increase)
                     print('best step %d'%(best_step))
+                    self.saver.save(sess, 'last-best')
 		
                 elif val_loss > validation_loss * improvement_threshold:
                     patience = step - 1
@@ -172,32 +171,40 @@ class Model:
             losses.append(average_loss) 
             step += 1
 
-        print("validation Results") #[IMP]replace with Test data 
-        val_loss, metrics = self.run_eval(sess)
+        print("Test Results")
+        #Reload the best state 
+        tfconfig = tf.ConfigProto(allow_soft_placement=True)
+        tfconfig.gpu_options.allow_growth = True
+        sess2 = tf.Session(config = tfconfig)
+        new_saver = tf.train.import_meta_graph('last-best.meta')
+        new_saver.restore(sess2, tf.train.latest_checkpoint('./'))
+
+        test_loss, metrics = self.run_eval(sess2, test=True, metrics=True)
         self.print_metrics(metrics) 
 
         return losses, best_step, metrics
 
 
 
-
 def evaluate(cfg):
     #with tf.variable_scope('Evaluation', reuse=None) as scope:
-    print("=====Configurations=====\n", cfg.__dict__)
-    model = Model(cfg)
-    
-    tfconfig = tf.ConfigProto()
-    tfconfig.gpu_options.allow_growth = True
-    sess = tf.Session(config = tfconfig)
-    
+    print("=====Configurations=====\n", cfg.__dict__)    
     all_results = {}
     for train_percent in cfg.training_percents:
         all_results[train_percent] = {}
-        for shuf in range(cfg.num_shuffles):
-             sess.run(model.init)
-             model.data.set_training_validation(('train',shuf, int(train_percent*100)), ('valid',shuf, int(train_percent*100)))
-             losses, best_step, metrics = model.fit(sess)
-             all_results[train_percent][shuf] = metrics
+        for shuf in range(1,cfg.num_shuffles+1):
+            with tf.Graph().as_default():  
+                 model = Model(cfg)
+
+                 tfconfig = tf.ConfigProto(allow_soft_placement=True)
+                 tfconfig.gpu_options.allow_growth = True
+                 sess = tf.Session(config = tfconfig)
+
+                 sess.run(model.init)
+                 model.data.set_training_validation(train_percent, shuf)
+                 losses, best_step, metrics = model.fit(sess)
+
+                 all_results[train_percent][shuf] = metrics
 
     for train_percent in sorted(all_results.keys()):
         print ('Train percent:', train_percent)
@@ -211,7 +218,9 @@ def evaluate(cfg):
         print ("Micro: ",np.mean(micro), "  Macro: ",np.mean(macro))
         print ('-------------------') 
         utils.write_results(cfg, all_results)
- 
+
+
+    
 
 
 def evaluate_multi():

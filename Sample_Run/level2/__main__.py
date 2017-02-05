@@ -78,8 +78,10 @@ class RNNLM_v1(object):
             data = np.tile(data, (1, self.config.num_steps))
             feed_dict = {self.data_placeholder: data, self.keep_prob:  keep_prob, self.arch.initial_state: self.arch.initial_state.eval(), self.seq_len: [7]*len(data)}
             labels_pred.extend(sess.run(self.arch.label_sigmoid, feed_dict=feed_dict)[0])
-
-        labels_pred = labels_pred[: -diff] #Ignore the labels predicted for 0 paddings
+        
+        if diff != 0:
+            labels_pred = labels_pred[: -diff] #Ignore the labels predicted for 0 paddings
+        
         if return_labels:
             return labels_pred
         else:
