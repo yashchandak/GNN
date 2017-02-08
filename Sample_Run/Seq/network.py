@@ -48,12 +48,12 @@ class Network(object):
             #outputs = tf.matmul(rnn_outputs, tf.transpose(self.embedding)) for o in rnn_outputs]
 
             self.variable_summaries(U, 'Node_Projection_Matrix')
-            self.variable_summaries(U2, 'Label_Projection_Matrix')
+            #self.variable_summaries(U2, 'Label_Projection_Matrix')
             
         return outputs
 
 
-    def predict(self,inputs,keep_prob, state=None):
+    def predict(self,inputs, inputs2, keep_prob, label_in, state=None):
         #Non-Dynamic Unidirectional RNN
         """Build the model up to where it may be used for inference.
         """
@@ -61,6 +61,7 @@ class Network(object):
         batch_size = self.config.batch_size
         # embed_size = self.config.mRNN._embed_size
         feature_size = self.config.data_sets._len_features
+        label_size = self.config.data_sets._len_labels
         batch_size = tf.shape(inputs)[0]
 
         if state == None:
@@ -75,16 +76,29 @@ class Network(object):
             state = self.initial_state
             RNN_H = tf.get_variable('HMatrix', initializer=tf.eye(hidden_size))
             RNN_I = tf.get_variable('IMatrix', [feature_size,hidden_size])
+            RNN_LI= tf.get_variable('LIMatrix', [label_size,hidden_size])
             RNN_b = tf.get_variable('B',[hidden_size])
 
             self.variable_summaries(RNN_H, 'HMatrix')
             self.variable_summaries(RNN_I, 'IMatrix')
+            self.variable_summaries(RNN_LI, 'LIMatrix')
             self.variable_summaries(RNN_b, 'Bias')
             
             inputs = tf.unpack(inputs)
-            for tstep, current_input in enumerate(inputs):
-                state = tf.nn.relu(tf.matmul(state,RNN_H) + tf.matmul(current_input,RNN_I) + RNN_b)
-                #state = tf.matmul(state,RNN_H) + current_input
+            inputs2 = tf.unpack(inputs2)
+            if label_in:
+                for tstep in range(len(inputs) - 1):
+                    state = tf.nn.relu(tf.matmul(state,RNN_H) +
+                                       tf.matmul(inputs[tstep] ,RNN_I) +
+                                       tf.matmul(inputs2[tstep],RNN_LI + RNN_b))
+
+                #Do not include the input label information for the final step prediction
+                state = tf.nn.relu(tf.matmul(state,RNN_H) + tf.matmul(inputs[-1],RNN_I) + RNN_b)
+                    
+            else:
+                for tstep, current_input in enumerate(inputs):
+                    state = tf.nn.relu(tf.matmul(state,RNN_H) + tf.matmul(current_input,RNN_I) + RNN_b)
+                    #state = tf.matmul(state,RNN_H) + current_input
                 
             self.final_state = state
     

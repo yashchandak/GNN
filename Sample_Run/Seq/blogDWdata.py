@@ -11,7 +11,8 @@ class DataSet(object):
   def __init__(self,cfg):
     """Construct a DataSet.
     """
-    self.all_walks    = np.load(cfg.walks_dir) # {node : [walks * steps]} 
+    self.all_walks    = np.fliplr(np.loadtxt(cfg.walks_dir)) #reverse the sequence
+    self.node_seq     = self.all_walks[:, -1]
     self.all_labels   = self.get_labels(cfg.label_dir)
     self.all_features = self.get_fetaures(cfg.features_dir) 
     self.train_nodes  = np.load(cfg.label_fold_dir+'train_ids.npy')
@@ -58,7 +59,10 @@ class DataSet(object):
       self.update_cache[node] = (new_label, new_count)
 
   def update_label_cache(self):
+    #{!!!IMP} Assert original training labels are not updated
     for k,v in self.update_cache.items():
+      assert self.train_nodes[k-1] is False
+      
       label = v[0]/v[1] #average of all predictions for this label
       self.label_cache[k] = label
       
@@ -78,40 +82,39 @@ class DataSet(object):
 
     return nodes
     
-  def next_batch(self, dataset, batch_size=None, shuffle=False):
+  def next_batch(self, dataset, batch_size=None, shuffle=True):
 
     nodes = self.get_nodes(dataset)    
     label_len = np.shape(self.all_labels)[1]
 
-    data, node_seq =[],[]
+    #Get position of all walks ending with desired set of nodes
+    pos = []
     for idx in np.where(nodes):
         node = idx + 1
-        walks = self.all_walks[node]
-        data.extend(walks)  #stack all the walks
-        node_seq.extend([node]*len(walks)) #stack their corresponding end nodes
+        pos.extend(np.where(self.node_seq == node)[0])
 
     if shuffle:
-        indices = np.random.permutation(len(data))
-        data    = data[indices]
-        node_seq= node_seq[indices]
-
-    for i in range(0,len(data), batch_size):
-        x = data[i: i+batch_size]
-
+        indices = np.random.permutation(len(pos))
+        pos = pos[indices]
+        
+    for i in range(0,len(pos), batch_size):
+        x = self.all_walks[pos[i: i+batch_size]]        
+        #convert from (batch x step) to (step x batch)
+        x = np.swapaxes(x, 0,1)
+        
         #get labels for valid data points, for others: select the 0th label
         #convert from (batch x step x feature_size) to (step x batch x feature_size)
         default = self.label_cache[0][0]
-        x2 = [[self.label_cache.get(item, default) for item in row] for row in x]
-        x2 = np.swapaxes(x2, 0,1)
-        
-        #get features for all data points
-        #convert from (batch x step x feature_size) to (step x batch x feature_size)
-        x = [[features[item] for item in row] for row in x]
-        x = np.swapaxes(x, 0,1)
+        x2 = [[self.label_cache.get(item, default) for item in row] for row in x] 
 
+        y = x2[-1, :] #Labels of all the final nodes
+
+        #get features for all data points
+        x = [[features[item] for item in row] for row in x]
+        
         seq = node_seq[i: i+batch_size]
                     
-        yield (x, np.array(x_labels), seq)
+        yield (x, x2, seq, y)
 
 
  

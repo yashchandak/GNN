@@ -15,9 +15,6 @@ import network as architecture
 import Config as conf
 import Eval_Calculate_Performance as perf
 
-#import Eval_MLP as NN
-import Eval_linear as liblinear
-import Eval_Config
 
 cfg = conf.Config() 
 class RNNLM_v1(object):
@@ -29,9 +26,9 @@ class RNNLM_v1(object):
         # Build model
         self.arch        = self.add_network(config)
 
-        self.rnn_outputs = self.arch.predict(self.data_placeholder,self.keep_prob, self.label_in)
+        self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2, self.keep_prob, self.label_in)
         self.outputs     = self.arch.projection(self.rnn_outputs)
-        self.loss        = self.arch.loss(self.outputs, self.label_placeholder, self.data_placeholder)
+        self.loss        = self.arch.loss(self.outputs, self.label_placeholder)
 
         self.optimizer   = self.config.solver._parameters['optimizer']
         self.train       = self.arch.training(self.loss,self.optimizer)
@@ -86,15 +83,17 @@ class RNNLM_v1(object):
         
     def add_placeholders(self):
         self.data_placeholder    = tf.placeholder(tf.float32, name='Input')
+        self.data_placeholder2   = tf.placeholder(tf.float32, name='label_inputs')
         self.label_placeholder   = tf.placeholder(tf.float32,name='Target')
         self.keep_prob           = tf.placeholder(tf.float32, name='keep_prob')
-        self.label_in            = tf.placeholder(tf.bool, name='label_inputs')
+        self.label_in            = tf.placeholder(tf.bool, name='label_input_condition')
 
         
-    def create_feed_dict(self, input_batch, label_batch, label_in):
+    def create_feed_dict(self, input_batch, input_batch2,  label_batch, label_in):
         feed_dict = {
             self.data_placeholder: input_batch,
-            self.label_placeholder: label_batch
+            self.data_placeholder2: input_batch2,
+            self.label_placeholder: label_batch,
             self.label_in : label_in
         }
         return feed_dict
@@ -106,7 +105,11 @@ class RNNLM_v1(object):
         """assign and add summary to a metric tensor"""
         for i,metric in enumerate(self.config.metrics):
             tf.summary.scalar(metric, metrics[i])
-
+            
+    def print_metrics(self, inp):
+        for idx, item in enumerate(inp):
+            print(self.config.metrics[idx], ": ", item)
+            
     def add_summaries(self,sess):
         # Instantiate a SummaryWriter to output summaries and the Graph.
         self.summary_writer_train = tf.train.SummaryWriter(self.config.logs_dir+"train", sess.graph)
@@ -134,11 +137,11 @@ class RNNLM_v1(object):
         total_steps = sum(1 for x in dataset.next_batch(self.config.batch_size,self.config.num_steps))	
 	#Sets to state to zero for a new epoch
         state = self.arch.initial_state.eval()
-        for step, (input_batch, label_batch, seq) in enumerate(
+        for step, (input_batch, input_batch2, label_batch, seq) in enumerate(
             dataset.next_batch(data,self.config.batch_size, shuffle=True)):
 
             #print("\n\n\nActualLabelCount: ", input_batch, label_batch, label_batch_2, seq_len, np.sum(label_batch_2, axis=2))
-            feed_dict = self.create_feed_dict(input_batch, label_batch, label_in)
+            feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob] = keep_prob
 	    #feed_dict[self.arch.initial_state] = state 
 	    
@@ -153,7 +156,6 @@ class RNNLM_v1(object):
             #print(loss_value)
             total_loss.append(loss_value[0])
             label_loss.append(loss_value[2])
-            #print(loss_value[5])
             grads.append(np.mean(loss_value[5][0]))
            
 
@@ -248,7 +250,7 @@ class RNNLM_v1(object):
             self.saver.restore(sess, checkpoint_file) #restore the best parameters
             self.bootstrap(sess, data='all', label_in=label_in) #Get new estimates of unlabeled nodes
             metrics = self.predict_results(sess, data='test', label_in=label_in) #Get predictions for test nodes
-
+            self.print_metrics(metrics)
             label_in = True
             #self.update_labels(new_labels) #Update the labels with 
 
