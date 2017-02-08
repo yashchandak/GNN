@@ -58,11 +58,12 @@ class Network(object):
         """Build the model up to where it may be used for inference.
         """
         hidden_size = self.config.mRNN._hidden_size
-        batch_size = self.config.batch_size
-        # embed_size = self.config.mRNN._embed_size
         feature_size = self.config.data_sets._len_features
         label_size = self.config.data_sets._len_labels
-        batch_size = tf.shape(inputs)[0]
+        batch_size = tf.shape(inputs)[1]
+
+        inputs = tf.unstack(inputs, axis=0)
+        inputs2 = tf.unstack(inputs2, axis=0)
 
         if state == None:
             state = tf.zeros([batch_size, self.config.mRNN._hidden_size]) 
@@ -71,33 +72,31 @@ class Network(object):
 
         with tf.variable_scope('InputDropout'):
             inputs = [tf.nn.dropout(x,keep_prob) for x in inputs]
-                
+
         with tf.variable_scope('RNN') as scope:
-            state = self.initial_state
-            RNN_H = tf.get_variable('HMatrix', initializer=tf.eye(hidden_size))
+
+            self.RNN_H = tf.get_variable('HMatrix', initializer=tf.eye(hidden_size))
             RNN_I = tf.get_variable('IMatrix', [feature_size,hidden_size])
             RNN_LI= tf.get_variable('LIMatrix', [label_size,hidden_size])
             RNN_b = tf.get_variable('B',[hidden_size])
 
-            self.variable_summaries(RNN_H, 'HMatrix')
+            self.variable_summaries(self.RNN_H, 'HMatrix')
             self.variable_summaries(RNN_I, 'IMatrix')
             self.variable_summaries(RNN_LI, 'LIMatrix')
             self.variable_summaries(RNN_b, 'Bias')
             
-            inputs = tf.unpack(inputs)
-            inputs2 = tf.unpack(inputs2)
-            if label_in:
-                for tstep in range(len(inputs) - 1):
-                    state = tf.nn.relu(tf.matmul(state,RNN_H) +
+            if label_in is not None:
+                for tstep in range(len(inputs)-1):
+                    state = tf.nn.relu(tf.matmul(state,self.RNN_H) +
                                        tf.matmul(inputs[tstep] ,RNN_I) +
                                        tf.matmul(inputs2[tstep],RNN_LI + RNN_b))
 
                 #Do not include the input label information for the final step prediction
-                state = tf.nn.relu(tf.matmul(state,RNN_H) + tf.matmul(inputs[-1],RNN_I) + RNN_b)
+                state = tf.nn.relu(tf.matmul(state,self.RNN_H) + tf.matmul(inputs[-1],RNN_I) + RNN_b)
                     
             else:
                 for tstep, current_input in enumerate(inputs):
-                    state = tf.nn.relu(tf.matmul(state,RNN_H) + tf.matmul(current_input,RNN_I) + RNN_b)
+                    state = tf.nn.relu(tf.matmul(state,self.RNN_H) + tf.matmul(current_input,RNN_I) + RNN_b)
                     #state = tf.matmul(state,RNN_H) + current_input
                 
             self.final_state = state
@@ -108,7 +107,7 @@ class Network(object):
         return rnn_outputs
         
 
-    def loss(self, predictions, labels, inputs, raw_inp):
+    def loss(self, predictions, labels	):
         """Calculates the loss from the predictions (logits?) and the labels.
         """
         #initialising variables
@@ -132,15 +131,12 @@ class Network(object):
             tf.add_to_collection('total_loss', lossL2)
 
         loss = tf.add_n(tf.get_collection('total_loss'))
-        grads, = tf.gradients(loss, [self.embedding])       
+        grads, = tf.gradients(loss, [self.RNN_H])       
 
-        tf.summary.scalar('next_node_loss', cross_entropy_next)
         tf.summary.scalar('curr_label_loss', cross_entropy_label)
-        tf.summary.scalar('label_similarity_loss', cross_entropy_label_similarity )
-        tf.summary.scalar('emb_loss', cross_entropy_emb)
         tf.summary.scalar('total_loss', tf.reduce_sum(loss))
         
-        return [loss, cross_entropy_next, cross_entropy_label, cross_entropy_label_similarity, cross_entropy_emb, grads]
+        return [loss, cross_entropy_label, grads]
 
     def training(self, loss, optimizer):
       """Sets up the training Ops.
