@@ -29,42 +29,38 @@ class RNNLM_v1(object):
         # Build model
         self.arch        = self.add_network(config)
 
-        self.rnn_outputs = self.arch.predict(self.data_placeholder,self.keep_prob)
+        self.rnn_outputs = self.arch.predict(self.data_placeholder,self.keep_prob, self.label_in)
         self.outputs     = self.arch.projection(self.rnn_outputs)
         self.loss        = self.arch.loss(self.outputs, self.label_placeholder, self.data_placeholder)
 
         self.optimizer   = self.config.solver._parameters['optimizer']
         self.train       = self.arch.training(self.loss,self.optimizer)
 
-        self.saver = tf.train.Saver(write_version=tf.train.SaverDef.V2)
-        self.summary = tf.summary.merge_all()
-        self.step_incr_op = self.arch.global_step.assign(self.arch.global_step+1)
-        self.init = tf.global_variables_initializer()
+        self.saver       = tf.train.Saver(write_version=tf.train.SaverDef.V2)
+        self.summary     = tf.summary.merge_all()
+        self.step_incr_op= self.arch.global_step.assign(self.arch.global_step+1)
+        self.init        = tf.global_variables_initializer()
+
+    def bootstrap(self, sess, data, label_in):
+        for step, (input_batch, label_batch, seq) in enumerate(
+                self.dataset.next_batch(data,self.config.batch_size, shuffle=False)):
+
+            feed_dict = self.create_feed_dict(input_batch, label_batch, label_in)
+            feed_dict[self.keep_prob] = keep_prob
+	    #feed_dict[self.arch.initial_state] = state 	    
+            pred_labels = sess.run([self.arch.label_sigmoid], feed_dict=feed_dict)
+            self.dataset.accumulate_label_cache(pred_labels, seq)
+
+        self.dataset.update_label_cache()
+
         
-    #[!!!]CHANGE THIS
-    def predict_results(self,sess, all_labels, return_labels = False):
-        labels_orig, all_data, labels_pred = [], [], []
-        diff = 0
-        
-        for k,v in all_labels.items():
-            labels_orig.append(v)
-            all_data.append([k])
-
-        for idx in range(0, len(all_data), self.config.batch_size):
-            #Replicate data on 2nd axis to meet the dimensions of data placeholder
-            #But since dynamic RNNs are used, only lengths of 'seq_length' are evaluated :)
-            data = all_data[idx: idx+self.config.batch_size]
-            diff = self.config.batch_size - len(data)
-
-            #0 pad the data for final batch if total length is less than batch_size
-            if diff !=  0:
-                data.extend([[0]]*diff)
-                
-            data = np.tile(data, (1, self.config.num_steps))
-            feed_dict = {self.data_placeholder: data, self.keep_prob: 1, self.arch.initial_state: self.arch.initial_state.eval(), self.seq_len: [1]*len(data)}
-            labels_pred.extend(sess.run(self.arch.label_sigmoid, feed_dict=feed_dict)[0])
-
-        labels_pred = labels_pred[: -diff] #Ignore the labels predicted for 0 paddings
+    def predict_results(self,sess, data, return_labels = False):
+        labels_orig, labels_pred = [],[]
+        for idx in np.where(self.dataset.get_nodes(data)):
+            node = idx+1
+            labels_orig.append(self.dataset.all_labels[node])
+            labels_pred.append(self.dataset.label_cache[node])
+  
         if return_labels:
             return labels_pred
         else:
@@ -77,13 +73,9 @@ class RNNLM_v1(object):
         if debug:
             print('##############--------- Debug mode [NOT IMPLEMENTED] ')
             num_debug = (self.config.num_steps+1)*128
-            #self.data_sets.train._x = self.data_sets.train._x[:num_debug]
-            #self.data_sets.validation._x  = self.data_sets.validation._x[:num_debug]
-            #self.data_sets.test_x  = self.data_sets.test_x[:num_debug]
         
-        self.config.data_sets._len_vocab = len(self.dataset.features)
-        l = len(list(self.data_sets.train.labels.values())[0])
-        self.config.data_sets._len_labels = l
+        self.config.data_sets._len_vocab = self.dataset.features.shape[0]
+        self.config.data_sets._len_labels = self.dataset.all_labels.shape[1]
         self.config.data_sets._len_features = self.dataset.features.shape[1]
 
         print('--------- Project Path: '+self.config.codebase_root_path+self.config.project_name)
@@ -91,15 +83,19 @@ class RNNLM_v1(object):
         print('--------- Label Length: '+str(self.config.data_sets._len_labels))
         print('--------- No. of Labelled nodes: ' + str(len(self.dataset.labels.keys())))
 
+        
     def add_placeholders(self):
         self.data_placeholder    = tf.placeholder(tf.float32, name='Input')
         self.label_placeholder   = tf.placeholder(tf.float32,name='Target')
         self.keep_prob           = tf.placeholder(tf.float32, name='keep_prob')
+        self.label_in            = tf.placeholder(tf.bool, name='label_inputs')
 
-    def create_feed_dict(self, input_batch, label_batch):
+        
+    def create_feed_dict(self, input_batch, label_batch, label_in):
         feed_dict = {
             self.data_placeholder: input_batch,
             self.label_placeholder: label_batch
+            self.label_in : label_in
         }
         return feed_dict
 
@@ -125,7 +121,7 @@ class RNNLM_v1(object):
         summary_writer.flush()
 
 
-    def run_epoch(self, sess, data, train_op=None, summary_writer=None,verbose=1000):
+    def run_epoch(self, sess, data, label_in, train_op=None, summary_writer=None,verbose=1000):
         if not train_op :
             train_op = tf.no_op()
             keep_prob = 1
@@ -138,19 +134,19 @@ class RNNLM_v1(object):
         total_steps = sum(1 for x in dataset.next_batch(self.config.batch_size,self.config.num_steps))	
 	#Sets to state to zero for a new epoch
         state = self.arch.initial_state.eval()
-        for step, (input_batch, label_batch) in enumerate(
-            dataset.next_batch(self.config.batch_size,self.config.num_steps)):
+        for step, (input_batch, label_batch, seq) in enumerate(
+            dataset.next_batch(data,self.config.batch_size, shuffle=True)):
 
             #print("\n\n\nActualLabelCount: ", input_batch, label_batch, label_batch_2, seq_len, np.sum(label_batch_2, axis=2))
-            feed_dict = self.create_feed_dict(self.filter_inputs(input_batch, label_batch))
+            feed_dict = self.create_feed_dict(input_batch, label_batch, label_in)
             feed_dict[self.keep_prob] = keep_prob
 	    #feed_dict[self.arch.initial_state] = state 
 	    
 	    #Writes loss summary @last step of the epoch
             if (step+1) < total_steps:
-                _, loss_value, state, pred_labels = sess.run([train_op, self.loss, self.arch.final_state, self.arch.label_sigmoid], feed_dict=feed_dict)
+                _, loss_value, pred_labels = sess.run([train_op, self.loss, self.arch.label_sigmoid], feed_dict=feed_dict)
             else:
-                _, loss_value, state, summary, pred_labels = sess.run([train_op, self.loss, self.arch.final_state,self.summary,self.arch.label_sigmoid], feed_dict=feed_dict)
+                _, loss_value, summary, pred_labels = sess.run([train_op, self.loss, self.summary,self.arch.label_sigmoid], feed_dict=feed_dict)
                 if summary_writer != None:
                     summary_writer.add_summary(summary,self.arch.global_step.eval(session=sess))
                     summary_writer.flush()
@@ -175,21 +171,9 @@ class RNNLM_v1(object):
         if verbose:
             sys.stdout.write('\r')
         return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro)
-
-    def fit_outer(self, sess):
-        while True: #put condition
-            sess.run(self.init) #reset all weights
-            print("------ Graph Reset | Next iteration -----")
-            best_step, losses = fit(self, sess) #Train with current distribution of labels
-
-            checkpoint_file = self.config.ckpt_dir + 'checkpoint'
-            self.saver.restore(sess, checkpoint_file) #restore the best parameters        
-            new_labels = self.predict_results(sess, data='test') #Get new predictions for unlabeled nodes
-
-            self.update_labels(new_labels) #Update the labels with 
             
 
-    def fit(self, sess):
+    def fit(self, sess, label_in):
         #define parametrs for early stopping early stopping
         max_epochs           = self.config.max_epochs
         patience             = self.config.patience              # look as this many examples regardless
@@ -211,14 +195,15 @@ class RNNLM_v1(object):
             epoch = self.arch.global_step.eval(session=sess)
 
             start_time = time.time()
-            average_loss, tr_micro, tr_macro = self.run_epoch(sess, data='train',train_op=self.train,summary_writer=self.summary_writer_train)
+            average_loss, tr_micro, tr_macro = self.run_epoch(sess, data='train',label_in=label_in, train_op=self.train,summary_writer=self.summary_writer_train)
             duration = time.time() - start_time
 
             if (epoch % self.config.val_epochs_freq == 0):
-                val_micro, val_macro = self.predict_results(data='val')
-
-                print('\nEpoch %d: tr_loss = %.2f, val_loss = %.2f || tr_micro = %.2f, val_micro = %.2f || tr_macro = %.2f, val_macro = %.2f  (%.3f sec)'
-                      % (epoch, average_loss, val_loss, tr_micro, val_micro, tr_macro, val_macro, duration))
+                metrics = self.predict_results(sess, data='val', label_in = label_in)
+                val_micro, val_macro = metrics[3], metrics[4]
+                
+                print('\nEpoch %d: tr_loss = %.2f || tr_micro = %.2f, val_micro = %.2f || tr_macro = %.2f, val_macro = %.2f  (%.3f sec)'
+                      % (epoch, average_loss, tr_micro, val_micro, tr_macro, val_macro, duration))
                 	
                 # Save model only if the improvement is significant
                 if (val_micro < validation_loss * improvement_threshold) and (epoch > self.config.save_epochs_after):
@@ -234,7 +219,7 @@ class RNNLM_v1(object):
                     patience = epoch - 1
 
             else:
-                print('Epoch %d: loss = %.2f pp = %.2f (%.3f sec)' % (epoch, average_loss, tr_pp, duration))
+                print('Epoch %d: loss = %.2f (%.3f sec)' % (epoch, average_loss, duration))
 
             if (patience <= epoch):
 		#config.val_epochs_freq = 2
@@ -252,6 +237,20 @@ class RNNLM_v1(object):
         return losses, best_step
 
 
+    def fit_outer(self, sess):
+        label_in = False #Ignore the label inputs during bootstrap | first run
+        while True: #put condition
+            sess.run(self.init) #reset all weights
+            print("------ Graph Reset | Next iteration -----")
+            losses, best_step = fit(self, sess, label_in) #Train with current distribution of labels
+
+            checkpoint_file = self.config.ckpt_dir + 'checkpoint'
+            self.saver.restore(sess, checkpoint_file) #restore the best parameters
+            self.bootstrap(sess, data='all', label_in=label_in) #Get new estimates of unlabeled nodes
+            metrics = self.predict_results(sess, data='test', label_in=label_in) #Get predictions for test nodes
+
+            label_in = True
+            #self.update_labels(new_labels) #Update the labels with 
 
 ########END OF CLASS MODEL#####################################
 
