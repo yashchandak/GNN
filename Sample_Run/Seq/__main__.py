@@ -44,15 +44,14 @@ class RNNLM_v1(object):
             pred_labels = sess.run([self.arch.label_sigmoid], feed_dict=feed_dict)
             self.dataset.accumulate_label_cache(pred_labels, seq)
 
-            print('%d/%d',%(step,tot) end="\r")
+            print('%d/%d'%(step,tot), end="\r")
             sys.stdout.flush()
 
         self.dataset.update_label_cache()
 
     def predict_results(self, sess, data, return_labels=False):
         labels_orig, labels_pred = [], []
-        for idx in np.where(self.dataset.get_nodes(data))[0]:
-            node = idx + 1
+        for node in np.where(self.dataset.get_nodes(data))[0]:
             # print('====',self.dataset.label_cache[node])
             labels_orig.append(self.dataset.all_labels[node])
             labels_pred.append(self.dataset.label_cache[node])
@@ -142,7 +141,7 @@ class RNNLM_v1(object):
             keep_prob_out = self.config.mRNN._keep_prob_out
 
         total_loss, label_loss = [], []
-        grads, f1_micro, f1_macro, accuracy = [], [], [], []
+        gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy = [],[], [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
         for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
@@ -155,7 +154,7 @@ class RNNLM_v1(object):
             # feed_dict[self.arch.initial_state] = state
 
             # Writes loss summary @last step of the epoch
-            if (step + 1) < total_steps:
+            if (step + 1) < tot:
                 _, loss_value, pred_labels = sess.run([train_op, self.loss, self.arch.label_sigmoid],
                                                       feed_dict=feed_dict)
             else:
@@ -179,7 +178,7 @@ class RNNLM_v1(object):
                     f1_micro.append(metrics[3])
                     f1_macro.append(metrics[4])
                     accuracy.append(metrics[-1])
-                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : gr_H = %0.8f : gr_I = %0.8f : gr_LI = %0.8f'
+                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : gr_H = %0.12f : gr_I = %0.12f : gr_LI = %0.12f'
                       % (step, tot, np.mean(label_loss), np.mean(f1_micro),
                          np.mean(accuracy), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
                 sys.stdout.flush()
@@ -192,7 +191,6 @@ class RNNLM_v1(object):
     def fit(self, sess, label_in):
         #Controls how many time to optimize the function before making next label prediction
         average_loss, tr_micro, tr_macro, tr_accuracy = 0,0,0,0
-        learning_rate = self.config.solver.learning_rate
         for step in range( self.config.max_inner_epochs):
             average_loss, tr_micro, tr_macro, tr_accuracy = self.run_epoch(sess, data='train', label_in=label_in,
                                                               train_op=self.train,
@@ -200,7 +198,7 @@ class RNNLM_v1(object):
         #return last evaluated loasses
         return average_loss, tr_micro, tr_macro, tr_accuracy 
 
-    def fit_outer(self, sess, label_in):
+    def fit_outer(self, sess):
         #[!!!IMP!!!] ideally, should also save the predicted labels to reload the performance later
         
         # define parametrs for early stopping early stopping

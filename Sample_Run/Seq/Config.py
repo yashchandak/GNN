@@ -36,7 +36,7 @@ class Config(object):
     save_epochs_after= 0
 
     #earlystopping hyperparametrs
-    patience = max_epochs # look as this many epochs regardless
+    patience = max_outer_epochs # look as this many epochs regardless
     patience_increase = 2 # wait this much longer when a new best is found
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
 

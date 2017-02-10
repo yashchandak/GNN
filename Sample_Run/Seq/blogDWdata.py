@@ -8,6 +8,7 @@ class DataSet(object):
     def __init__(self, cfg):
         """Construct a DataSet.
         """
+        self.cfg = cfg
         self.all_walks   = np.fliplr(np.loadtxt(cfg.walks_dir, dtype=np.int))  # reverse the sequence
         self.node_seq    = self.all_walks[:, -1]  # index by ending node
         self.all_labels  = self.get_labels(cfg.label_dir)
@@ -19,7 +20,7 @@ class DataSet(object):
         self.test_nodes  = np.concatenate(([False], np.load(cfg.label_fold_dir + 'test_ids.npy')))
         # [!!!IMP!!]Assert no overlap between test/val/train nodes
 
-        self.label_cache, self.update_cache = {}, {}
+        self.label_cache, self.update_cache = {0:list(self.all_labels[0])}, {}
 
     def get_fetaures(self, path):
         # Serves 2 purpose:
@@ -45,7 +46,7 @@ class DataSet(object):
         default = (self.all_labels[0], 0) #Initial estimate -> all_zeros
         labels = labels[0]
         
-        if self.config.data_sets.binary_label_updates:
+        if self.cfg.data_sets.binary_label_updates:
             #Convert to binary and keep only the maximum value as 1
             amax = np.argmax(labels, axis = 1)
             labels = np.zeros(labels.shape)
@@ -106,7 +107,7 @@ class DataSet(object):
 
             # get labels for valid data points, for others: select the 0th label
             x2 = [[self.label_cache.get(item, self.label_cache[0]) for item in row] for row in x]
-            y  = [[self.all_labels.get(item) for item in x[-1]]
+            y  = [list(self.all_labels[item]) for item in x[-1]]
 
             # get features for all data points
             x = [[self.all_features[item] for item in row] for row in x]
