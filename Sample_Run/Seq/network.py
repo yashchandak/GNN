@@ -39,7 +39,8 @@ class Network(object):
           outputs: List of length num_steps, each a tensor of shape
                    (batch_size, len(vocab)
         """
-        
+
+
         with tf.variable_scope('Projection'):
             
             U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size, self.config.data_sets._len_labels])
@@ -75,7 +76,7 @@ class Network(object):
 
         with tf.variable_scope('RNN') as scope:
 
-            self.RNN_H = tf.get_variable('HMatrix', initializer=tf.eye(hidden_size))
+            self.RNN_H = tf.get_variable('HMatrix',initializer=tf.eye(hidden_size))
             RNN_I = tf.get_variable('IMatrix', [feature_size,hidden_size])
             RNN_LI= tf.get_variable('LIMatrix', [label_size,hidden_size])
             RNN_b = tf.get_variable('B',[hidden_size])
@@ -100,9 +101,9 @@ class Network(object):
                     #state = tf.matmul(state,RNN_H) + current_input
                 
             self.final_state = state
-    
+
         with tf.variable_scope('RNNDropout'):
-            rnn_outputs = tf.nn.dropout(self.final_state, keep_prob) 
+            rnn_outputs = tf.nn.dropout(self.final_state, keep_prob)
 
         return rnn_outputs
         

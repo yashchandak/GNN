@@ -11,7 +11,7 @@ class Config(object):
     #Folder name and project name is the same
     project_name = 'Seq'
     dataset_name = 'cora'
-    train_percent = 4
+    train_percent = 2
     train_fold  = 1
     
     logs_d   = '/Logs/'
@@ -41,7 +41,7 @@ class Config(object):
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
 
     metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
-               'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss']
+               'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss','accuracy']
     
     def __init__(self):
         self.init2()
@@ -99,8 +99,8 @@ class Config(object):
 
     class RNNArchitecture(object):
         def __init__(self):
-            self._hidden_size = 128
-            self._dropout = 0.9
+            self._hidden_size = 16
+            self._dropout = 0.7
 
     solver = Solver()
     data_sets = Data_sets()

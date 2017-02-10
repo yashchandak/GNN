@@ -1,4 +1,4 @@
-from sklearn.metrics import coverage_error
+from sklearn.metrics import coverage_error, accuracy_score
 from sklearn.metrics import label_ranking_loss
 from sklearn.metrics import label_ranking_average_precision_score
 from sklearn.metrics import hamming_loss
@@ -95,6 +95,8 @@ def evaluate(predictions, labels, threshold):
 
   assert predictions.shape == labels.shape
 
+  accuracy = accuracy_score(np.argmax(labels, axis=1), np.argmax(predictions, axis=1))
+
   if threshold:
     for i in range(predictions.shape[0]):
       predictions[i,:][predictions[i,:]>= threshold]=1
@@ -118,6 +120,6 @@ def evaluate(predictions, labels, threshold):
   
   micro_precision, micro_recall, micro_f1,macro_precision, macro_recall, macro_f1 = bipartition_scores(labels, predictions)
   
-  performance = np.asarray([coverage,average_precision,ranking_loss,micro_f1,macro_f1,micro_precision,micro_recall,macro_precision,macro_recall, pak[0], pak[1], pak[2], ham_loss])
+  performance = np.asarray([coverage,average_precision,ranking_loss,micro_f1,macro_f1,micro_precision,micro_recall,macro_precision,macro_recall, pak[0], pak[1], pak[2], ham_loss, accuracy])
   #print ("Performance: " , performance)
   return performance
