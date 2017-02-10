@@ -27,9 +27,9 @@ class Config(object):
 
     # Batch size
     batch_size = 32
-    num_steps = 7
     #Number of steps to run trainer
-    max_epochs = 3
+    max_outer_epochs = 100
+    max_inner_epochs = 3
     #Validation frequence
     val_epochs_freq = 1
     #Model save frequency
@@ -41,7 +41,7 @@ class Config(object):
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
 
     metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
-               'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss','accuracy']
+               'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss','cross-entropy','accuracy']
     
     def __init__(self):
         self.init2()
@@ -96,11 +96,13 @@ class Config(object):
             self._len_vocab = 0
             self._len_labels = 0
             self._len_features =0
+            self.binary_label_updates = False
 
     class RNNArchitecture(object):
         def __init__(self):
             self._hidden_size = 16
-            self._dropout = 0.7
+            self._keep_prob_in = 0.7
+            self._keep_prob_out = 0.7
 
     solver = Solver()
     data_sets = Data_sets()

@@ -18,35 +18,34 @@ cfg = conf.Config()
 class RNNLM_v1(object):
     def __init__(self, config):
         self.config = config
-        # Generate placeholders for the images and labels.
         self.load_data()
         self.add_placeholders()
-        # Build model
         self.arch = self.add_network(config)
 
-        self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2, self.keep_prob,
-                                             self.label_in)
-        self.outputs = self.arch.projection(self.rnn_outputs)
-        self.loss = self.arch.loss(self.outputs, self.label_placeholder)
+        self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2,
+                                             self.keep_prob_in, self.keep_prob_out,self.label_in)
+        self.outputs     = self.arch.projection(self.rnn_outputs)
+        self.loss        = self.arch.loss(self.outputs, self.label_placeholder)
+        self.optimizer   = self.config.solver._optimizer
+        self.train       = self.arch.training(self.loss, self.optimizer)
 
-        self.optimizer = self.config.solver._optimizer
-        self.train = self.arch.training(self.loss, self.optimizer)
-
-        self.saver = tf.train.Saver()
-        self.summary = tf.summary.merge_all()
+        self.saver        = tf.train.Saver()
+        self.summary      = tf.summary.merge_all()
         self.step_incr_op = self.arch.global_step.assign(self.arch.global_step + 1)
-        self.init = tf.global_variables_initializer()
+        self.init         = tf.global_variables_initializer()
 
     def bootstrap(self, sess, data, label_in):
-        for step, (input_batch, input_batch2, seq, label_batch) in enumerate(
+        for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
                 self.dataset.next_batch(data, batch_size=1024, shuffle=False)):
-            # print(step)
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
-            feed_dict[self.keep_prob] = 1
+            feed_dict[self.keep_prob_in] = 1
+            feed_dict[self.keep_prob_out] = 1
             # feed_dict[self.arch.initial_state] = state
             pred_labels = sess.run([self.arch.label_sigmoid], feed_dict=feed_dict)
-            # print("Accumulating...")
             self.dataset.accumulate_label_cache(pred_labels, seq)
+
+            print('%d/%d',%(step,tot) end="\r")
+            sys.stdout.flush()
 
         self.dataset.update_label_cache()
 
@@ -94,7 +93,8 @@ class RNNLM_v1(object):
                                                 name='label_inputs')
         self.label_placeholder = tf.placeholder(tf.float32, shape=[None, self.config.data_sets._len_labels],
                                                 name='Target')
-        self.keep_prob = tf.placeholder(tf.float32, name='keep_prob')
+        self.keep_prob_in = tf.placeholder(tf.float32, name='keep_prob_in')
+        self.keep_prob_out = tf.placeholder(tf.float32, name='keep_prob_out')
         self.label_in = tf.placeholder(tf.bool, name='label_input_condition')
 
     def create_feed_dict(self, input_batch, input_batch2, label_batch, label_in):
@@ -131,24 +131,27 @@ class RNNLM_v1(object):
         summary_writer.flush()
 
     def run_epoch(self, sess, data, label_in, train_op=None, summary_writer=None, verbose=50):
+        #Optimize the objective for one entire epoch via mini-batches
+        
         if not train_op:
             train_op = tf.no_op()
-            keep_prob = 1
+            keep_prob_in = 1
+            keep_prob_out = 1
         else:
-            keep_prob = self.config.mRNN._dropout
+            keep_prob_in = self.config.mRNN._keep_prob_in
+            keep_prob_out = self.config.mRNN._keep_prob_out
 
-        # And then after everything is built, start the training loop.
         total_loss, label_loss = [], []
-        grads, f1_micro, f1_macro = [], [], []
-        total_steps = sum(1 for x in self.dataset.next_batch(data, self.config.batch_size))
+        grads, f1_micro, f1_macro, accuracy = [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
-        for step, (input_batch, input_batch2, seq, label_batch) in enumerate(
+        for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
                 self.dataset.next_batch(data, self.config.batch_size, shuffle=True)):
 
             # print("\n\n\nActualLabelCount: ", np.shape(input_batch), np.shape(input_batch2), np.shape(label_batch), np.shape(seq))
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
-            feed_dict[self.keep_prob] = keep_prob
+            feed_dict[self.keep_prob_in] = keep_prob_in
+            feed_dict[self.keep_prob_out] = keep_prob_out
             # feed_dict[self.arch.initial_state] = state
 
             # Writes loss summary @last step of the epoch
@@ -164,68 +167,88 @@ class RNNLM_v1(object):
             # print(loss_value)
             total_loss.append(loss_value[0])
             label_loss.append(loss_value[1])
-            grads.append(np.mean(loss_value[2][0]))
+            gr_H.append(np.mean(loss_value[2][0]))
+            gr_I.append(np.mean(loss_value[2][1]))
+            gr_LI.append(np.mean(loss_value[2][2]))
 
             # print("\n\n\nPredLabels:", pred_labels)
             if verbose and step % verbose == 0:
                 metrics = [0] * 10
                 if self.config.solver._curr_label_loss:
-                    # metrics = self.predict_results(sess, data=data)
-                    # self.add_metrics(metrics)
+                    metrics = perf.evaluate(pred_labels, label_batch, 0)
                     f1_micro.append(metrics[3])
                     f1_macro.append(metrics[4])
-                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : macro-F1 = %0.3f : grads = %0.12f' % (
-                    step, total_steps, np.mean(label_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(grads)),
-                      end="\r")
+                    accuracy.append(metrics[-1])
+                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : gr_H = %0.8f : gr_I = %0.8f : gr_LI = %0.8f'
+                      % (step, tot, np.mean(label_loss), np.mean(f1_micro),
+                         np.mean(accuracy), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
                 sys.stdout.flush()
 
         if verbose:
             sys.stdout.write('\r')
-        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro)
+        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy)
+
 
     def fit(self, sess, label_in):
+        #Controls how many time to optimize the function before making next label prediction
+        average_loss, tr_micro, tr_macro, tr_accuracy = 0,0,0,0
+        learning_rate = self.config.solver.learning_rate
+        for step in range( self.config.max_inner_epochs):
+            average_loss, tr_micro, tr_macro, tr_accuracy = self.run_epoch(sess, data='train', label_in=label_in,
+                                                              train_op=self.train,
+                                                              summary_writer=self.summary_writer_train)
+        #return last evaluated loasses
+        return average_loss, tr_micro, tr_macro, tr_accuracy 
+
+    def fit_outer(self, sess, label_in):
+        #[!!!IMP!!!] ideally, should also save the predicted labels to reload the performance later
+        
         # define parametrs for early stopping early stopping
-        max_epochs = self.config.max_epochs
+        max_epochs = self.config.max_outer_epochs
         patience = self.config.patience  # look as this many examples regardless
         patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
-        improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is
-        # considered significant
+        improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
 
-        # go through this many minibatches before checking the network on the validation set
-        # Here we check every epoch
         validation_loss = 1e6
         done_looping = False
         step = 1
         best_step = -1
         losses = []
         learning_rate = self.config.solver.learning_rate
+        label_in = None  # Ignore the label inputs during bootstrap | first run
         # sess.run(self.init) #DO NOT DO THIS!! Doesn't restart from checkpoint
         while (step <= self.config.max_epochs) and (not done_looping):
+
+                        
             sess.run([self.step_incr_op])
             epoch = self.arch.global_step.eval(session=sess)
 
+
+            print("------ Graph Reset | Next iteration -----")            
+            sess.run(self.init)  # reset all weights
+            print([v for v in tf.trainable_variables()]) #Just to monitor the trainable variables in tf graph
             start_time = time.time()
-            average_loss, tr_micro, tr_macro = self.run_epoch(sess, data='train', label_in=label_in,
-                                                              train_op=self.train,
-                                                              summary_writer=self.summary_writer_train)
+            #Fit the model to predict best possible labels given the current estimates of unlabeled values
+            average_loss, tr_micro, tr_macro, tr_accuracy = self.fit(sess, label_in)
             duration = time.time() - start_time
 
+            #Make this true after first round of trainig has been done
+            label_in = True
+
             if (epoch % self.config.val_epochs_freq == 0):
-                # [IMP] DO we bootstrap at this position?
-                # Bootstrap need to be done once before calling validation or testing
-                self.bootstrap(sess, data='val', label_in=label_in)  # Get new estimates of unlabeled validation nodes
-                metrics = self.predict_results(sess, data='val')
-                val_micro, val_macro = metrics[3], metrics[4]
+                # Get new estimates of unlabeled validation nodes
+                self.bootstrap(sess, data='all', label_in=label_in)  
+                metrics = self.predict_results(sess, data='val') #evaluate performance for validation set
+                val_micro, val_macro, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-2], metrics[-1]
 
                 print(
-                    '\nEpoch %d: tr_loss = %.2f || tr_micro = %.2f, val_micro = %.2f || tr_macro = %.2f, val_macro = %.2f  (%.3f sec)'
-                    % (epoch, average_loss, tr_micro, val_micro, tr_macro, val_macro, duration))
+                    '\nEpoch %d: tr_loss = %.2f, val_loss %.2f || tr_micro = %.2f, val_micro = %.2f || tr_acc = %.2f, val_acc = %.2f  (%.3f sec)'
+                    % (epoch, average_loss, val_loss, tr_micro, val_micro, tr_accuracy, val_accuracy, duration))
 
                 # Save model only if the improvement is significant
-                if ((1 - val_micro) < validation_loss * improvement_threshold) and (
-                            epoch > self.config.save_epochs_after):
+                if (val_loss< validation_loss * improvement_threshold) and (epoch > self.config.save_epochs_after):
                     patience = max(patience, epoch * patience_increase)
-                    validation_loss = (1 - val_micro)
+                    validation_loss = val_loss
                     checkpoint_file = self.config.ckpt_dir + 'checkpoint'
                     self.saver.save(sess, checkpoint_file, global_step=epoch)
                     self.saver.save(sess, self.config.ckpt_dir + 'last-best')
@@ -233,12 +256,20 @@ class RNNLM_v1(object):
                     patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
                     print('best step %d' % (best_step))
 
-                elif (1 - val_micro) > validation_loss * improvement_threshold:
+                elif val_loss > validation_loss * improvement_threshold:
                     patience = epoch - 1
+
+                #Get predictions for test nodes
+                #These metrics are not used anywhere :)
+                self.print_metrics( self.predict_results(sess, data='test'))
 
             else:
                 print('Epoch %d: loss = %.2f (%.3f sec)' % (epoch, average_loss, duration))
 
+            """
+            #Uncomment this if weights are not re-initialized after bootstrap for new labels
+            #If weights are re-initialised then we can't reduce the learning rate
+            
             if (patience <= epoch):
                 # config.val_epochs_freq = 2
                 learning_rate = learning_rate / 10
@@ -248,33 +279,28 @@ class RNNLM_v1(object):
                 if learning_rate <= 0.0000001:
                     print('Stopping by patience method')
                     done_looping = True
+            """
 
             losses.append(average_loss)
             step += 1
 
+        #End of Training 
+
+
+        #Create new session and load the last best
+        tfconfig = tf.ConfigProto(allow_soft_placement=True)
+        tfconfig.gpu_options.allow_growth = True
+        sess = tf.Session(config=tfconfig)
+        new_saver = tf.train.import_meta_graph(self.config.ckpt_dir + 'last-best.meta')
+        new_saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))
+        # checkpoint_file = self.config.ckpt_dir + 'checkpoint'
+        # self.saver.restore(sess, checkpoint_file) #restore the best parameters
+        
+        self.bootstrap(sess, data='all', label_in=label_in)  # Get new estimates of unlabeled nodes
+        self.print_metrics( self.predict_results(sess, data='test'))  # Get predictions for test nodes
+        
+
         return losses, best_step
-
-    def fit_outer(self, sess):
-        label_in = None  # Ignore the label inputs during bootstrap | first run
-        while True:  # put condition
-            sess.run(self.init)  # reset all weights
-            print("------ Graph Reset | Next iteration -----")
-            losses, best_step = self.fit(sess, label_in)  # Train with current distribution of labels
-
-            tfconfig = tf.ConfigProto(allow_soft_placement=True)
-            tfconfig.gpu_options.allow_growth = True
-            sess = tf.Session(config=tfconfig)
-            new_saver = tf.train.import_meta_graph(self.config.ckpt_dir + 'last-best.meta')
-            new_saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))
-            # checkpoint_file = self.config.ckpt_dir + 'checkpoint'
-            # self.saver.restore(sess, checkpoint_file) #restore the best parameters
-
-
-            self.bootstrap(sess, data='all', label_in=label_in)  # Get new estimates of unlabeled nodes
-            metrics = self.predict_results(sess, data='test')  # Get predictions for test nodes
-            self.print_metrics(metrics)
-            label_in = True
-            # self.update_labels(new_labels) #Update the labels with
 
 
 ########END OF CLASS MODEL#####################################

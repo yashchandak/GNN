@@ -96,6 +96,7 @@ def evaluate(predictions, labels, threshold):
   assert predictions.shape == labels.shape
 
   accuracy = accuracy_score(np.argmax(labels, axis=1), np.argmax(predictions, axis=1))
+  cross_entropy = -np.mean(labels*np.log(predictions+.0000000001))
 
   if threshold:
     for i in range(predictions.shape[0]):
@@ -120,6 +121,6 @@ def evaluate(predictions, labels, threshold):
   
   micro_precision, micro_recall, micro_f1,macro_precision, macro_recall, macro_f1 = bipartition_scores(labels, predictions)
   
-  performance = np.asarray([coverage,average_precision,ranking_loss,micro_f1,macro_f1,micro_precision,micro_recall,macro_precision,macro_recall, pak[0], pak[1], pak[2], ham_loss, accuracy])
+  performance = np.asarray([coverage,average_precision,ranking_loss,micro_f1,macro_f1,micro_precision,micro_recall,macro_precision,macro_recall, pak[0], pak[1], pak[2], ham_loss,cross_entropy, accuracy])
   #print ("Performance: " , performance)
   return performance
