@@ -4,7 +4,7 @@ import sys, os, shutil
 class Config(object):
 
 
-    codebase_root_path = '/home/priyesh/Desktop/Codes/Sample_Run/'
+    codebase_root_path = '/home/test/Project/Sample_Run/'
     sys.path.insert(0, codebase_root_path)
 
     ####  Directory paths ####
@@ -26,7 +26,7 @@ class Config(object):
     debug = False
 
     # Batch size
-    batch_size = 32
+    batch_size = 128
     #Number of steps to run trainer
     max_outer_epochs = 100
     max_inner_epochs = 3
@@ -36,7 +36,7 @@ class Config(object):
     save_epochs_after= 0
 
     #earlystopping hyperparametrs
-    patience = max_outer_epochs # look as this many epochs regardless
+    patience = 2 # look as this many epochs regardless
     patience_increase = 2 # wait this much longer when a new best is found
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
 
@@ -72,21 +72,23 @@ class Config(object):
         self.logs_dir = ext_path + self.logs_d
         self.ckpt_dir = ext_path + self.ckpt_d
         #self.embed_dir= ext_path + self.embed_d
-        #self.result_dir = ext_path+self.result_d
+        self.results_folder = ext_path+self.result_d
 
         self.check_n_create(ext_path)
         self.check_n_create(self.logs_dir)
         self.check_n_create(self.ckpt_dir)
         #self.check_n_create(self.embed_dir)
-        #self.check_n_create(self.result_dir)
+        self.check_n_create(self.results_folder)
         
     class Solver(object):
         def __init__(self):
             #Initial learning rate
-            self.learning_rate = 0.001
+            self.learning_rate = 0.1
 
             #optimizer
-            self._optimizer = tf.train.AdamOptimizer(self.learning_rate)
+            #self.opt = tf.train.AdamOptimizer
+            self.opt= tf.train.GradientDescentOptimizer
+            self._optimizer = self.opt(self.learning_rate)
             self._curr_label_loss = True
             self._L2loss = True
             
@@ -101,8 +103,8 @@ class Config(object):
     class RNNArchitecture(object):
         def __init__(self):
             self._hidden_size = 16
-            self._keep_prob_in = 0.7
-            self._keep_prob_out = 0.7
+            self._keep_prob_in = 0.8
+            self._keep_prob_out = 0.5
 
     solver = Solver()
     data_sets = Data_sets()

@@ -94,17 +94,17 @@ class Network(object):
             # b) deeper net on label and feature concatenation
 
             # Concat feature and estimated label inputs
-            #if label_in is not None:
-            #    for tstep in range(len(inputs)):
-            #        state = tf.nn.tanh(tf.matmul(state, self.RNN_H) + self.RNN_b +
-            #                           tf.matmul(tf.concat(1, [inputs[tstep], inputs2[tstep]]), self.RNN_ILI))
-
-            # Treat features and estimated labels separately
             if label_in is not None:
                 for tstep in range(len(inputs)):
-                    state = tf.nn.tanh(tf.matmul(state,self.RNN_H) +
-                                       tf.matmul(inputs[tstep] ,self.RNN_I) +
-                                       tf.matmul(inputs2[tstep],self.RNN_LI + self.RNN_b))
+                    state = tf.nn.tanh(tf.matmul(state, self.RNN_H) + self.RNN_b +
+                                       tf.matmul(tf.concat(1, [inputs[tstep], inputs2[tstep]]), self.RNN_ILI))
+
+            # Treat features and estimated labels separately
+            #if label_in is not None:
+            #    for tstep in range(len(inputs)):
+            #        state = tf.nn.tanh(tf.matmul(state,self.RNN_H) +
+            #                           tf.matmul(inputs[tstep] ,self.RNN_I) +
+            #                           tf.matmul(inputs2[tstep],self.RNN_LI + self.RNN_b))
 
                     # Exclude the input label information for the final step prediction
                     # state = tf.nn.tanh(tf.matmul(state,self.RNN_H) +
@@ -147,11 +147,11 @@ class Network(object):
 
         if self.config.solver._L2loss:
             vars = tf.trainable_variables()
-            lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars]) * 0.000001
+            lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars]) *0
             tf.add_to_collection('total_loss', lossL2)
 
         loss = tf.add_n(tf.get_collection('total_loss'))
-        grads = tf.gradients(loss, [self.RNN_H, self.RNN_I, self.RNN_LI])
+        grads = tf.gradients(loss, [self.RNN_H, self.RNN_I, self.RNN_ILI])
 
         tf.summary.scalar('curr_label_loss', cross_entropy_label)
         tf.summary.scalar('total_loss', tf.reduce_sum(loss))

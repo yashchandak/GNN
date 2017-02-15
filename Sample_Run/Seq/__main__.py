@@ -9,6 +9,7 @@ import tensorflow as tf
 
 import Config as conf
 import Eval_Calculate_Performance as perf
+from Eval_utils import write_results
 import network as architecture
 from blogDWdata import DataSet
 
@@ -36,7 +37,7 @@ class RNNLM_v1(object):
 
     def bootstrap(self, sess, data, label_in):
         for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
-                self.dataset.next_batch(data, batch_size=1024, shuffle=False)):
+                self.dataset.next_batch(data, batch_size=512, shuffle=False)):
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
@@ -215,11 +216,11 @@ class RNNLM_v1(object):
         learning_rate = self.config.solver.learning_rate
         label_in = None  # Ignore the label inputs during bootstrap | first run
         # sess.run(self.init) #DO NOT DO THIS!! Doesn't restart from checkpoint
-        while (step <= self.config.max_epochs) and (not done_looping):
+        while (step <= self.config.max_outer_epochs) and (not done_looping):
 
                         
-            sess.run([self.step_incr_op])
-            epoch = self.arch.global_step.eval(session=sess)
+            #sess.run([self.step_incr_op])
+            epoch = step#self.arch.global_step.eval(session=sess)
 
 
             print("------ Graph Reset | Next iteration -----")            
@@ -245,7 +246,7 @@ class RNNLM_v1(object):
 
                 # Save model only if the improvement is significant
                 if (val_loss< validation_loss * improvement_threshold) and (epoch > self.config.save_epochs_after):
-                    patience = max(patience, epoch * patience_increase)
+                    #patience = max(patience, epoch * patience_increase)
                     validation_loss = val_loss
                     checkpoint_file = self.config.ckpt_dir + 'checkpoint'
                     self.saver.save(sess, checkpoint_file, global_step=epoch)
@@ -254,8 +255,8 @@ class RNNLM_v1(object):
                     patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
                     print('best step %d' % (best_step))
 
-                elif val_loss > validation_loss * improvement_threshold:
-                    patience = epoch - 1
+                #elif val_loss > validation_loss * improvement_threshold:
+                #    patience = epoch - 1
 
                 #Get predictions for test nodes
                 #These metrics are not used anywhere :)
@@ -265,19 +266,20 @@ class RNNLM_v1(object):
                 print('Epoch %d: loss = %.2f (%.3f sec)' % (epoch, average_loss, duration))
 
             """
-            #Uncomment this if weights are not re-initialized after bootstrap for new labels
-            #If weights are re-initialised then we can't reduce the learning rate
-            
-            if (patience <= epoch):
+            #Uncomment this if weights are NOT re-initialized after bootstrap for new labels
+            #If weights are re-initialised then we can't reduce the learning rate immendiately
+            """
+
+            if patience <= epoch:
                 # config.val_epochs_freq = 2
                 learning_rate = learning_rate / 10
-                self.optimizer = tf.train.AdamOptimizer(learning_rate)
+                self.optimizer = self.config.solver.opt(learning_rate)
                 patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
                 print('--------- Learning rate dropped to: %f' % (learning_rate))
                 if learning_rate <= 0.0000001:
                     print('Stopping by patience method')
                     done_looping = True
-            """
+
 
             losses.append(average_loss)
             step += 1
@@ -295,10 +297,10 @@ class RNNLM_v1(object):
         # self.saver.restore(sess, checkpoint_file) #restore the best parameters
         
         self.bootstrap(sess, data='all', label_in=label_in)  # Get new estimates of unlabeled nodes
-        self.print_metrics( self.predict_results(sess, data='test'))  # Get predictions for test nodes
-        
+        metrics  = self.predict_results(sess, data='test')
+        self.print_metrics(metrics)  # Get predictions for test nodes
 
-        return losses, best_step
+        return metrics
 
 
 ########END OF CLASS MODEL#####################################
@@ -329,31 +331,27 @@ def train_DNNModel():
     model, sess = init_Model(config)
     with sess:
         model.add_summaries(sess)
-        model.fit_outer(sess)
-
+        metrics = model.fit_outer(sess)
+        return metrics
 
 def execute():
     with tf.device('/gpu:1'):
-        err = train_DNNModel()
-        return err
+        metrics = train_DNNModel()
+        return metrics
 
 
 if __name__ == "__main__":
-    # remove parameter dictionary
-
     meta_param = {  # ('dataset_name',):['blogcatalog_ncc'],
         # ('solver', 'learning_rate'): [0.001],
-        # ('retrain',): [False],
-        ('debug',): [False],
-        ('max_epochs',): [1000]
+        ('train_fold',): [1,2,3,4,5]
     }
 
-    variations = len(meta_param[('debug',)])
-
+    variations = len(meta_param.values()[0])
     # Make sure number of variants are equal
     for k, v in meta_param.items():
         assert len(v) == variations
 
+    all_results = {cfg.train_percent: {}}
     for idx in range(variations):
         for k, vals in meta_param.items():
             x = cfg
@@ -364,7 +362,12 @@ if __name__ == "__main__":
 
         cfg.create(cfg.dataset_name)  # "run-"+str(idx))
         cfg.init2()
+        print("=====Configurations=====\n", cfg.__dict__)
 
         # All set... GO!
-        execute()
+        metrics = execute()
+        all_results[cfg.train_percent][meta_param[('train_fold',)][idx]] = metrics
         print('\n\n ===================== \n\n')
+
+    write_results(cfg, all_results)
+
