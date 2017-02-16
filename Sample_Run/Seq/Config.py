@@ -9,7 +9,7 @@ class Config(object):
 
     ####  Directory paths ####
     #Folder name and project name is the same
-    project_name = 'Seq'
+    project_name = 'Seq2'
     dataset_name = 'cora'
     train_percent = 2
     train_fold  = 1
@@ -29,15 +29,15 @@ class Config(object):
     batch_size = 128
     #Number of steps to run trainer
     max_outer_epochs = 100
-    max_inner_epochs = 3
+    max_inner_epochs = 1
     #Validation frequence
     val_epochs_freq = 1
     #Model save frequency
     save_epochs_after= 0
 
     #earlystopping hyperparametrs
-    patience = 2 # look as this many epochs regardless
-    patience_increase = 2 # wait this much longer when a new best is found
+    patience = 5 # look as this many epochs regardless
+    patience_increase = 5 # wait this much longer when a new best is found
     improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
 
     metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',

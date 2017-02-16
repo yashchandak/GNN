@@ -45,8 +45,8 @@ class RNNLM_v1(object):
             pred_labels = sess.run([self.arch.label_sigmoid], feed_dict=feed_dict)
             self.dataset.accumulate_label_cache(pred_labels, seq)
 
-            print('%d/%d'%(step,tot), end="\r")
-            sys.stdout.flush()
+            #print('%d/%d'%(step,tot), end="\r")
+            #sys.stdout.flush()
 
         self.dataset.update_label_cache()
 
@@ -224,7 +224,7 @@ class RNNLM_v1(object):
 
 
             print("------ Graph Reset | Next iteration -----")            
-            sess.run(self.init)  # reset all weights
+            #sess.run(self.init)  # reset all weights
             print([v for v in tf.trainable_variables()]) #Just to monitor the trainable variables in tf graph
             start_time = time.time()
             #Fit the model to predict best possible labels given the current estimates of unlabeled values
@@ -236,6 +236,8 @@ class RNNLM_v1(object):
 
             if (epoch % self.config.val_epochs_freq == 0):
                 # Get new estimates of unlabeled validation nodes
+                #the actual inputs that resulted in this new result
+                old_labels = deepcopy(self.dataset.label_cache)
                 self.bootstrap(sess, data='all', label_in=label_in)  
                 metrics = self.predict_results(sess, data='val') #evaluate performance for validation set
                 val_micro, val_macro, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-2], metrics[-1]
@@ -248,9 +250,12 @@ class RNNLM_v1(object):
                 if (val_loss< validation_loss * improvement_threshold) and (epoch > self.config.save_epochs_after):
                     #patience = max(patience, epoch * patience_increase)
                     validation_loss = val_loss
-                    checkpoint_file = self.config.ckpt_dir + 'checkpoint'
-                    self.saver.save(sess, checkpoint_file, global_step=epoch)
+                    
+                    #checkpoint_file = self.config.ckpt_dir + 'checkpoint'
+                    #self.saver.save(sess, checkpoint_file, global_step=epoch)
                     self.saver.save(sess, self.config.ckpt_dir + 'last-best')
+                    np.save( self.config.ckpt_dir + 'last-best_labels.npy',old_labels)
+                    
                     best_step = epoch
                     patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
                     print('best step %d' % (best_step))
@@ -276,6 +281,10 @@ class RNNLM_v1(object):
                 self.optimizer = self.config.solver.opt(learning_rate)
                 patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
                 print('--------- Learning rate dropped to: %f' % (learning_rate))
+ 
+                self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))
+        	self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()
+ 
                 if learning_rate <= 0.0000001:
                     print('Stopping by patience method')
                     done_looping = True
@@ -288,14 +297,15 @@ class RNNLM_v1(object):
 
 
         #Create new session and load the last best
-        tfconfig = tf.ConfigProto(allow_soft_placement=True)
-        tfconfig.gpu_options.allow_growth = True
-        sess = tf.Session(config=tfconfig)
-        new_saver = tf.train.import_meta_graph(self.config.ckpt_dir + 'last-best.meta')
-        new_saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))
+        #tfconfig = tf.ConfigProto(allow_soft_placement=True)
+        #tfconfig.gpu_options.allow_growth = True
+        #sess = tf.Session(config=tfconfig)
+        #new_saver = tf.train.import_meta_graph(self.config.ckpt_dir + 'last-best.meta')
+        #new_saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))
         # checkpoint_file = self.config.ckpt_dir + 'checkpoint'
-        # self.saver.restore(sess, checkpoint_file) #restore the best parameters
-        
+        self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir)) #restore the best parameters
+        self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()     
+   
         self.bootstrap(sess, data='all', label_in=label_in)  # Get new estimates of unlabeled nodes
         metrics  = self.predict_results(sess, data='test')
         self.print_metrics(metrics)  # Get predictions for test nodes
@@ -314,12 +324,12 @@ def init_Model(config):
     tfconfig.gpu_options.allow_growth = True
     sm = tf.train.SessionManager()
 
-    if config.retrain:
-        load_ckpt_dir = config.ckpt_dir
-        print('--------- Loading variables from checkpoint if available')
-    else:
-        load_ckpt_dir = ''
-        print('--------- Training from scratch')
+    #if config.retrain:
+    #    load_ckpt_dir = config.ckpt_dir
+    #    print('--------- Loading variables from checkpoint if available')
+    #else:
+    load_ckpt_dir = ''
+    print('--------- Training from scratch')
     sess = sm.prepare_session("", init_op=model.init, saver=model.saver, checkpoint_dir=load_ckpt_dir, config=tfconfig)
     return model, sess
 
@@ -369,5 +379,5 @@ if __name__ == "__main__":
         all_results[cfg.train_percent][meta_param[('train_fold',)][idx]] = metrics
         print('\n\n ===================== \n\n')
 
-    write_results(cfg, all_results)
+        write_results(cfg, all_results)
 
