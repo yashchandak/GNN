@@ -91,6 +91,7 @@ class Network(object):
         #outputs = tf.unpack(outputs,axis=0) 
         with tf.variable_scope('RNNDropout'):
             self.variable_summaries(self.final_state, 'final_state') #summary wtiter throwing 'noneType' error otherwise
+            #TODO: final state 0 or 1?
             rnn_outputs = tf.nn.dropout(self.final_state[0], keep_prob_out)
 
         return rnn_outputs

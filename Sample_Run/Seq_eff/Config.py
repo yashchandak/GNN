@@ -10,7 +10,7 @@ class Config(object):
     ####  Directory paths ####
     #Folder name and project name is the same
     project_name = 'Seq_att'
-    dataset_name = 'citeseer'
+    dataset_name = 'cora'
     train_percent = 4
     train_fold  = 1
     
@@ -29,7 +29,7 @@ class Config(object):
     batch_size = 32
     #Number of steps to run trainer
     max_outer_epochs = 100
-    max_inner_epochs = 0
+    max_inner_epochs = 1
     #Validation frequence
     val_epochs_freq = 1
     #Model save frequency

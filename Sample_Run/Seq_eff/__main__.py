@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import sys
 import time
+import os
 from copy import deepcopy
 
 import numpy as np
@@ -13,17 +14,13 @@ from Eval_utils import write_results
 import network as architecture
 from blogDWdata import DataSet
 
-import os
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
 os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 np.random.seed(1234)
 tf.set_random_seed(1234)
-
 cfg = conf.Config()
-
-
 
 class RNNLM_v1(object):
     def __init__(self, config):
@@ -33,7 +30,7 @@ class RNNLM_v1(object):
         self.arch = self.add_network(config)
 
         self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2,
-                                             self.keep_prob_in, self.keep_prob_out,self.label_in, self.inp_lengths)
+                                             self.keep_prob_in, self.keep_prob_out, self.label_in, self.inp_lengths)
         self.outputs     = self.arch.projection(self.rnn_outputs)
         self.loss        = self.arch.loss(self.outputs, self.label_placeholder)
         self.optimizer   = self.config.solver._optimizer
@@ -60,12 +57,6 @@ class RNNLM_v1(object):
             for idx, count in enumerate(counts):
                 self.dataset.label_cache[seq[idx]] = list(np.mean(pred_labels[0][start:start+count], axis=0))
                 start += count
-            #self.dataset.accumulate_label_cache(pred_labels, node)
-
-            #print('%d/%d'%(step,tot), end="\r")
-            #sys.stdout.flush()
-
-        #self.dataset.update_label_cache()
 
     def bootstrap2(self, sess, data, label_in):
         for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
@@ -94,7 +85,6 @@ class RNNLM_v1(object):
             return perf.evaluate(labels_pred, labels_orig, 0)
 
     def load_data(self):
-        # Get the 'encoded data'
         self.dataset = DataSet(self.config)
         debug = self.config.debug
         if debug:
@@ -163,7 +153,6 @@ class RNNLM_v1(object):
 
     def run_epoch(self, sess, data, label_in, train_op=None, summary_writer=None, verbose=50):
         #Optimize the objective for one entire epoch via mini-batches
-        
         if not train_op:
             train_op = tf.no_op()
             keep_prob_in = 1
@@ -176,13 +165,14 @@ class RNNLM_v1(object):
         gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy = [],[], [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
-        for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
+        for step, (input_batch, input_batch2, _, label_batch, tot, lengths) in enumerate(
                 self.dataset.next_batch(data, self.config.batch_size, shuffle=True)):
 
             # print("\n\n\nActualLabelCount: ", np.shape(input_batch), np.shape(input_batch2), np.shape(label_batch), np.shape(seq))
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob_in] = keep_prob_in
             feed_dict[self.keep_prob_out] = keep_prob_out
+            feed_dict[self.inp_lengths] = lengths
             # feed_dict[self.arch.initial_state] = state
 
             # Writes loss summary @last step of the epoch
@@ -239,7 +229,7 @@ class RNNLM_v1(object):
         patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
         improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
 
-        inc = 0 #override number of inner iterations for first bootstrap step
+        inc = 3 #override number of inner iterations for first bootstrap step
         validation_loss = 1e6
         done_looping = False
         step = 1

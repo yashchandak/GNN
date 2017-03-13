@@ -4,9 +4,6 @@ from copy import deepcopy
 from random import shuffle
 from scipy.io import loadmat
 
-np.random.seed(1234)
-
-
 class DataSet(object):
     def __init__(self, cfg):
         """Construct a DataSet.
@@ -99,16 +96,22 @@ class DataSet(object):
 
         nodes = self.get_nodes(dataset)
         label_len = np.shape(self.all_labels)[1]
+        max_len = self.all_walks.shape[1]
 
         # Get position of all walks ending with desired set of nodes
         pos = []
+        seq = []
         for node in np.where(nodes)[0]:
-            pos.extend(np.where(self.node_seq == node)[0])
+            temp = np.where(self.node_seq == node)[0]
+            pos.extend(temp)
+            seq.extend([node]*len(temp))
 
         pos = np.array(pos)
+        seq = np.array(seq)
         if shuffle:
             indices = np.random.permutation(len(pos))
             pos = pos[indices]
+            seq = seq[indices]
 
         if batch_size == -1:
             batch_size = len(pos)
@@ -116,18 +119,22 @@ class DataSet(object):
         tot = len(pos)//batch_size
         for i in range(0, len(pos), batch_size):
             x = self.all_walks[pos[i: i + batch_size]]
+
+            temp = np.array(x)>0  #get locations of all zero inputs
+            lengths = max_len - np.sum(temp, axis=1)
+
             x = np.swapaxes(x, 0, 1) # convert from (batch x step) to (step x batch)
 
             # get labels for valid data points, for others: select the 0th label
             x2 = [[self.label_cache.get(item, self.label_cache[0]) for item in row] for row in x]
-            y  = [list(self.all_labels[item]) for item in x[-1]]
+            y  = [list(self.all_labels[item]) for item in seq[i: i+batch_size]]
 
             # get features for all data points
             x = [[self.all_features[item] for item in row] for row in x]
 
-            seq = self.node_seq[pos[i: i + batch_size]]
+            #seq = self.node_seq[pos[i: i + batch_size]]
 
-            yield (x, x2, seq, y, tot)
+            yield (x, x2, seq, y, tot, lengths)
 
     def next_batch_same(self, dataset, node_count=1):
 
@@ -148,24 +155,21 @@ class DataSet(object):
         max_len = self.all_walks.shape[1]
         # Get a batch of all walks for 'node_count' number of node
         for idx in range(0, len(counts), node_count):
-            print(idx)
+            #print(idx)
             stop = start + np.sum(counts[idx:idx+node_count]) #start + total number of walks to be consiudered this time
             x = self.all_walks[pos[start:stop]] #get the walks corresponding to respective positions
 
             temp = np.array(x)>0  #get locations of all zero inputs
-            length = max_len - np.sum(temp, axis=1)
+            lengths = max_len - np.sum(temp, axis=1)
 
             x = np.swapaxes(x, 0, 1) # convert from (batch x step) to (step x batch)
 
             # get labels for valid data points, for others: select the 0th label
             x2 = [[self.label_cache.get(item, self.label_cache[0]) for item in row] for row in x]
-            y  = [list(self.all_labels[item]) for item in x[-1]]
-
+            y  = [list(self.all_labels[item]) for item in x[-1,:]] #Not useful, only presetn for sake of placeholder
 
             # get features for all data points
             x = [[self.all_features[item] for item in row] for row in x]
 
-
-
             start = stop
-            yield (x, x2, seq[idx:idx+node_count], counts[idx:idx+node_count], y, length)
+            yield (x, x2, seq[idx:idx+node_count], counts[idx:idx+node_count], y, lengths)
