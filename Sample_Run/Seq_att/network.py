@@ -53,7 +53,6 @@ class Network(object):
 
         Returns: (batch_size, hidden_size )
         """
-
         class MyLSTMCell(RNNCell):
             '''Vanilla LSTM implemented with same initializations as BN-LSTM'''
 
@@ -101,6 +100,12 @@ class Network(object):
         batch_size = tf.shape(inputs)[1]
         max_len = self.config.num_steps
 
+        if self.config.data_sets.reduced_dims:
+            with tf.variable_scope('Reduce_Dim') as scope:
+                W_ii = tf.get_variable('W_ii', [feature_size, self.config.data_sets.reduced_dims])
+                inputs = tf.reshape(tf.matmul(tf.reshape(inputs, [-1, feature_size]), W_ii), [max_len,-1,self.config.data_sets.reduced_dims])
+                scope.reuse_variables()
+
         # Split along time direction
         inputs = tf.unstack(inputs, axis=0)
         inputs2 = tf.unstack(inputs2, axis=0)
@@ -130,8 +135,10 @@ class Network(object):
             #outputs, self.final_state = tf.nn.dynamic_rnn(cell, inp_cat, dtype=tf.float32, time_major = True)
             with tf.variable_scope('Loop') as scope:
                 rnn_outputs = []
-                for tstep, current_input in enumerate(inp_cat):
-                    outs, state = cell.__call__(current_input, state=state)
+                l = len(inp_cat)
+                d = max(0, l - self.config.max_depth) #clip maximum depth to be traversed
+                for tstep in range(d, l):
+                    outs, state = cell.__call__(inp_cat[tstep], state=state)
                     rnn_outputs.append(outs)
                     scope.reuse_variables()
 
@@ -172,25 +179,26 @@ class Network(object):
          Returns: (batch_size, len_labels )
          """  # initialising variables
         cross_entropy_label = tf.constant(0)
-        self.label_sigmoid = tf.constant(0)
+        self.label_preds = tf.constant(0)
 
         if self.config.solver._curr_label_loss:
-            # Sigmoid activation
-            self.label_sigmoid = tf.nn.sigmoid(predictions)
-            # binary cross entropy for labels
-            cross_loss = tf.add(tf.log(1e-10 + self.label_sigmoid)*labels,
-                               tf.log(1e-10 + (1-self.label_sigmoid))*(1-labels))
-            cross_entropy_label = -1*tf.reduce_mean(tf.reduce_sum(cross_loss,1))
+            if self.config.data_sets._multi_label:
+                # Sigmoid activation
+                self.label_preds = tf.nn.sigmoid(predictions)
+                # binary cross entropy for labels
+                cross_loss = tf.add(tf.log(1e-10 + self.label_preds)*labels,
+                                   tf.log(1e-10 + (1-self.label_preds))*(1-labels))
+                cross_entropy_label = -1*tf.reduce_mean(tf.reduce_sum(cross_loss,1))
 
-
-            #self.label_sigmoid = tf.nn.softmax(predictions)
-            #cross_entropy_label = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(self.label_sigmoid + 1e-10), 1))
+            else:
+                self.label_preds = tf.nn.softmax(predictions)
+                cross_entropy_label = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(self.label_preds + 1e-10), 1))
 
             tf.add_to_collection('total_loss', cross_entropy_label)
 
         if self.config.solver._L2loss:
             vars = tf.trainable_variables()
-            lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars]) *0.001
+            lossL2 = tf.add_n([tf.nn.l2_loss(v) for v in vars]) * self.config.solver._L2loss
             tf.add_to_collection('total_loss', lossL2)
 
         loss = tf.add_n(tf.get_collection('total_loss'))

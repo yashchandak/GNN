@@ -61,9 +61,18 @@ class DataSet(object):
 
     def update_label_cache(self):
         #Average all the predictions made for the corresponding nodes and reset cache
-        for k, v in self.update_cache.items():
-            self.label_cache[k] = list(v[0]/v[1])  
-        self.update_cache = {} 
+        alpha = self.cfg.solver.label_update_rate
+
+        if len(self.label_cache.items()) > 1:
+            #Non-first time updates
+            for k, v in self.update_cache.items():
+                self.label_cache[k] =  list((1-alpha)*np.array(self.label_cache[k]) + alpha*(v[0]/v[1]))
+        else:
+            #First time update
+            for k, v in self.update_cache.items():
+                self.label_cache[k] = list(v[0] / v[1])
+
+        self.update_cache = {}
 
     def get_nodes(self, dataset):
         nodes = []

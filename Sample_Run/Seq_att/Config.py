@@ -21,12 +21,13 @@ class Config(object):
 
     #Retrain
     retrain = True
-
     #Debug with small dataset
     debug = False
 
     # Batch size
     batch_size = 32
+    #maximum depth for trajecory from NOI
+    max_depth = 999
     #Number of steps to run trainer
     max_outer_epochs = 100
     max_inner_epochs = 1
@@ -61,8 +62,7 @@ class Config(object):
             os.mkdir(path)
         else:
             if not self.retrain:
-            #path exists but if retrain in False
-            #then replace previous folder with new folder
+            #path exists but if retrain in False, then replace previous folder with new folder
                 shutil.rmtree(path)
                 os.mkdir(path)
         
@@ -84,27 +84,25 @@ class Config(object):
         def __init__(self):
             #Initial learning rate
             self.learning_rate = 0.001
-
+            self.label_update_rate = .75
             #optimizer
             self.opt = tf.train.AdamOptimizer
             #self.opt= tf.train.GradientDescentOptimizer
             self._optimizer = self.opt(self.learning_rate)
             self._curr_label_loss = True
-            self._L2loss = True
+            self._L2loss = 1e-3
             
 
     class Data_sets(object):
         def __init__(self):
-            self._len_vocab = 0
-            self._len_labels = 0
-            self._len_features =0
+            self.reduced_dims = False
             self.binary_label_updates = False
 
     class RNNArchitecture(object):
         def __init__(self):
             self._hidden_size = 16
-            self._keep_prob_in = 0.5
-            self._keep_prob_out = 0.25
+            self._keep_prob_in = 1
+            self._keep_prob_out = .8
 
     solver = Solver()
     data_sets = Data_sets()

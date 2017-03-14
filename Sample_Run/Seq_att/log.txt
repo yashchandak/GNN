@@ -1,0 +1,1070 @@
+train_fold 1
+=====Configurations=====
+ {'project_prefix_path': '/home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1/', 'train_fold': 1, 'walks_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/walks/walks_80.txt', 'ckpt_dir': './citeseer/Checkpoints/', 'label_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels.npy', 'logs_dir': './citeseer/Logs/', 'results_folder': './citeseer/Results/', 'features_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/features.npy', 'label_fold_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels/1/1/'}
+############## Training Module 
+--------- Project Path: /home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1
+--------- Total number of nodes: 3313
+--------- Walk length: 29
+--------- Label Length: 6
+--------- Feature Length: 3703
+--------- Train nodes: 29
+--------- Val nodes: 6
+--------- Test nodes: 3277
+--------- Training from scratch
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 6.2948 : micro-F1 = 0.031 : accuracy = 0.031 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 3.0429 : micro-F1 = 0.453 : accuracy = 0.453 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 1: tr_loss = 2.46, val_loss 0.11 || tr_micro = 0.45, val_micro = 0.83 || tr_acc = 0.45, val_acc = 0.83  (4.244 sec)
+best step 1
+coverage :  4.2804394263
+average_precision :  0.453260095616
+ranking_loss :  0.656087885261
+micro_f1 :  0.343911614635
+macro_f1 :  0.412619380892
+micro_precision :  0.343912114634
+macro_precision :  0.343912114634
+micro_recall :  0.624456705892
+macro_recall :  0.308101388364
+p@1 :  0.000305157155935
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.218695961754
+cross-entropy :  0.258599066883
+accuracy :  0.343912114739
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.9023 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.7497 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 2: tr_loss = 0.73, val_loss 0.15 || tr_micro = 0.91, val_micro = 0.83 || tr_acc = 0.91, val_acc = 0.83  (5.400 sec)
+coverage :  4.36893500153
+average_precision :  0.438510833079
+ranking_loss :  0.673787000305
+micro_f1 :  0.326212499596
+macro_f1 :  0.392739106897
+micro_precision :  0.326212999595
+macro_precision :  0.326212999595
+micro_recall :  0.608361480008
+macro_recall :  0.289966528062
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.224595666768
+cross-entropy :  0.453075074788
+accuracy :  0.326212999695
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.4390 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.3915 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 3: tr_loss = 0.43, val_loss 0.19 || tr_micro = 0.97, val_micro = 0.83 || tr_acc = 0.97, val_acc = 0.83  (5.470 sec)
+coverage :  4.35978028685
+average_precision :  0.440036618859
+ranking_loss :  0.67195605737
+micro_f1 :  0.328043442531
+macro_f1 :  0.385333669156
+micro_precision :  0.32804394253
+macro_precision :  0.32804394253
+micro_recall :  0.570039783203
+macro_recall :  0.291032925599
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.223985352457
+cross-entropy :  0.614701245323
+accuracy :  0.32804394263
+--------- Learning rate dropped to: 0.000100
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.6733 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.7432 : micro-F1 = 0.953 : accuracy = 0.953 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 4: tr_loss = 0.72, val_loss 0.16 || tr_micro = 0.95, val_micro = 0.83 || tr_acc = 0.95, val_acc = 0.83  (5.508 sec)
+coverage :  4.47421422032
+average_precision :  0.420964296613
+ranking_loss :  0.694842844065
+micro_f1 :  0.305156655843
+macro_f1 :  0.36944261463
+micro_precision :  0.305157155842
+macro_precision :  0.305157155842
+micro_recall :  0.574362542772
+macro_recall :  0.272294549037
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.231614281355
+cross-entropy :  0.45514565462
+accuracy :  0.305157155935
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.2443 : micro-F1 = 1.000 : accuracy = 1.000 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.3889 : micro-F1 = 0.984 : accuracy = 0.984 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 5: tr_loss = 0.42, val_loss 0.18 || tr_micro = 0.98, val_micro = 0.83 || tr_acc = 0.98, val_acc = 0.83  (5.291 sec)
+coverage :  4.32316142814
+average_precision :  0.446139761977
+ranking_loss :  0.664632285627
+micro_f1 :  0.335367214271
+macro_f1 :  0.393386997395
+micro_precision :  0.335367714271
+macro_precision :  0.335367714271
+micro_recall :  0.581605729301
+macro_recall :  0.297206098836
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.221544095209
+cross-entropy :  0.603383442563
+accuracy :  0.335367714373
+--------- Learning rate dropped to: 0.000010
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.8589 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.7411 : micro-F1 = 0.953 : accuracy = 0.953 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 6: tr_loss = 0.72, val_loss 0.15 || tr_micro = 0.95, val_micro = 0.83 || tr_acc = 0.95, val_acc = 0.83  (5.409 sec)
+coverage :  4.41928593226
+average_precision :  0.430119011291
+ranking_loss :  0.683857186451
+micro_f1 :  0.316142313453
+macro_f1 :  0.379031795164
+micro_precision :  0.316142813453
+macro_precision :  0.316142813453
+micro_recall :  0.580995990093
+macro_recall :  0.281261213983
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.227952395484
+cross-entropy :  0.454329019396
+accuracy :  0.316142813549
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.5984 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.4107 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 7: tr_loss = 0.43, val_loss 0.19 || tr_micro = 0.94, val_micro = 0.83 || tr_acc = 0.94, val_acc = 0.83  (5.698 sec)
+coverage :  4.32010985658
+average_precision :  0.446648357237
+ranking_loss :  0.664021971315
+micro_f1 :  0.335977528583
+macro_f1 :  0.387964480468
+micro_precision :  0.335978028582
+macro_precision :  0.335978028582
+micro_recall :  0.557161947024
+macro_recall :  0.297592939854
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.221340657105
+cross-entropy :  0.605349260343
+accuracy :  0.335978028685
+--------- Learning rate dropped to: 0.000001
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.9077 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.7370 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 8: tr_loss = 0.72, val_loss 0.15 || tr_micro = 0.91, val_micro = 0.83 || tr_acc = 0.91, val_acc = 0.83  (5.488 sec)
+coverage :  4.41013121758
+average_precision :  0.431644797071
+ranking_loss :  0.682026243515
+micro_f1 :  0.317973256388
+macro_f1 :  0.384167042595
+micro_precision :  0.317973756388
+macro_precision :  0.317973756388
+micro_recall :  0.598181286043
+macro_recall :  0.282939158636
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.227342081172
+cross-entropy :  0.448028876989
+accuracy :  0.317973756485
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cf1417250>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1429290>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf136ec10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cf1409b10>]
+0/73 : label = 0.4744 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan50/73 : label = 0.3994 : micro-F1 = 0.953 : accuracy = 0.953 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 9: tr_loss = 0.43, val_loss 0.17 || tr_micro = 0.95, val_micro = 0.83 || tr_acc = 0.95, val_acc = 0.83  (5.324 sec)
+coverage :  4.25297528227
+average_precision :  0.457837452955
+ranking_loss :  0.650595056454
+micro_f1 :  0.34940444344
+macro_f1 :  0.390352627627
+micro_precision :  0.349404943439
+macro_precision :  0.349404943439
+micro_recall :  0.528242304227
+macro_recall :  0.309550010758
+p@1 :  0.0
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.216865018818
+cross-entropy :  0.593462915425
+accuracy :  0.349404943546
+--------- Learning rate dropped to: 0.000000
+Stopping by patience method
+coverage :  4.2804394263
+average_precision :  0.453260095616
+ranking_loss :  0.656087885261
+micro_f1 :  0.343911614635
+macro_f1 :  0.412619380892
+micro_precision :  0.343912114634
+macro_precision :  0.343912114634
+micro_recall :  0.624456705892
+macro_recall :  0.308101388364
+p@1 :  0.000305157155935
+p@3 :  0.000101719051978
+p@5 :  6.10314311871e-05
+hamming_loss :  0.218695961754
+cross-entropy :  0.258599066883
+accuracy :  0.343912114739
+
+
+ ===================== 
+
+
+train_fold 2
+=====Configurations=====
+ {'project_prefix_path': '/home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1/', 'train_fold': 2, 'walks_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/walks/walks_80.txt', 'ckpt_dir': './citeseer/Checkpoints/', 'label_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels.npy', 'logs_dir': './citeseer/Logs/', 'results_folder': './citeseer/Results/', 'features_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/features.npy', 'label_fold_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels/1/2/'}
+############## Training Module 
+--------- Project Path: /home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1
+--------- Total number of nodes: 3313
+--------- Walk length: 29
+--------- Label Length: 6
+--------- Feature Length: 3703
+--------- Train nodes: 26
+--------- Val nodes: 5
+--------- Test nodes: 3281
+--------- Training from scratch
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 6.4059 : micro-F1 = 0.156 : accuracy = 0.156 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 3.2600 : micro-F1 = 0.469 : accuracy = 0.469 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 1: tr_loss = 2.87, val_loss 0.17 || tr_micro = 0.47, val_micro = 0.80 || tr_acc = 0.47, val_acc = 0.80  (5.064 sec)
+best step 1
+coverage :  4.37549527583
+average_precision :  0.437417454028
+ranking_loss :  0.675099055166
+micro_f1 :  0.324900444736
+macro_f1 :  0.263419013333
+micro_precision :  0.324900944735
+macro_precision :  0.324900944735
+micro_recall :  0.229483281512
+macro_recall :  0.309134648361
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.225033018389
+cross-entropy :  0.232674227429
+accuracy :  0.324900944834
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 1.2407 : micro-F1 = 0.781 : accuracy = 0.781 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 0.9845 : micro-F1 = 0.828 : accuracy = 0.828 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 2: tr_loss = 0.97, val_loss 0.22 || tr_micro = 0.83, val_micro = 0.60 || tr_acc = 0.83, val_acc = 0.60  (5.285 sec)
+coverage :  4.80219445291
+average_precision :  0.366300924515
+ranking_loss :  0.760438890582
+micro_f1 :  0.239560609346
+macro_f1 :  0.281711014355
+micro_precision :  0.239561109345
+macro_precision :  0.239561109345
+micro_recall :  0.368075707139
+macro_recall :  0.228173513064
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.253479630194
+cross-entropy :  0.369011599786
+accuracy :  0.239561109418
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 0.5435 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 0.5832 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 3: tr_loss = 0.62, val_loss 0.25 || tr_micro = 0.91, val_micro = 0.60 || tr_acc = 0.91, val_acc = 0.60  (4.536 sec)
+coverage :  4.72142639439
+average_precision :  0.379762267601
+ranking_loss :  0.744285278878
+micro_f1 :  0.255714221045
+macro_f1 :  0.290342183134
+micro_precision :  0.255714721044
+macro_precision :  0.255714721044
+micro_recall :  0.357295980722
+macro_recall :  0.244521955493
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.248095092959
+cross-entropy :  0.530996329548
+accuracy :  0.255714721122
+--------- Learning rate dropped to: 0.000100
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 1.1046 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 0.9764 : micro-F1 = 0.922 : accuracy = 0.922 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 4: tr_loss = 0.97, val_loss 0.23 || tr_micro = 0.92, val_micro = 0.60 || tr_acc = 0.92, val_acc = 0.60  (5.357 sec)
+coverage :  4.53550746724
+average_precision :  0.410748755461
+ranking_loss :  0.707101493447
+micro_f1 :  0.292898006464
+macro_f1 :  0.32375921923
+micro_precision :  0.292898506464
+macro_precision :  0.292898506464
+micro_recall :  0.37644850662
+macro_recall :  0.284009006068
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.235700497816
+cross-entropy :  0.377234322012
+accuracy :  0.292898506553
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 0.7043 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 0.5735 : micro-F1 = 0.953 : accuracy = 0.953 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 5: tr_loss = 0.61, val_loss 0.26 || tr_micro = 0.95, val_micro = 0.60 || tr_acc = 0.95, val_acc = 0.60  (4.906 sec)
+coverage :  4.71533069186
+average_precision :  0.380778218023
+ranking_loss :  0.743066138372
+micro_f1 :  0.25693336155
+macro_f1 :  0.291695743078
+micro_precision :  0.256933861549
+macro_precision :  0.256933861549
+micro_recall :  0.362501686121
+macro_recall :  0.244030991561
+p@1 :  0.0
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.247688712791
+cross-entropy :  0.528642985773
+accuracy :  0.256933861628
+--------- Learning rate dropped to: 0.000010
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 1.2062 : micro-F1 = 0.812 : accuracy = 0.812 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 1.0132 : micro-F1 = 0.844 : accuracy = 0.844 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 6: tr_loss = 0.99, val_loss 0.22 || tr_micro = 0.84, val_micro = 0.60 || tr_acc = 0.84, val_acc = 0.60  (4.822 sec)
+coverage :  4.55989027735
+average_precision :  0.406684953774
+ranking_loss :  0.711978055471
+micro_f1 :  0.288021444442
+macro_f1 :  0.311890228389
+micro_precision :  0.288021944441
+macro_precision :  0.288021944441
+micro_recall :  0.356629570763
+macro_recall :  0.27712557332
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.23732601849
+cross-entropy :  0.38688769184
+accuracy :  0.288021944529
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 0.8611 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 0.5741 : micro-F1 = 0.922 : accuracy = 0.922 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 7: tr_loss = 0.61, val_loss 0.26 || tr_micro = 0.92, val_micro = 0.60 || tr_acc = 0.92, val_acc = 0.60  (4.838 sec)
+coverage :  4.80676622981
+average_precision :  0.365538961699
+ranking_loss :  0.761353245962
+micro_f1 :  0.238646253967
+macro_f1 :  0.275413109214
+micro_precision :  0.238646753966
+macro_precision :  0.238646753966
+micro_recall :  0.352690734247
+macro_recall :  0.225914128392
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.253784415321
+cross-entropy :  0.55057183475
+accuracy :  0.238646754038
+--------- Learning rate dropped to: 0.000001
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 1.3225 : micro-F1 = 0.750 : accuracy = 0.750 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 1.0107 : micro-F1 = 0.812 : accuracy = 0.812 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 8: tr_loss = 0.99, val_loss 0.23 || tr_micro = 0.81, val_micro = 0.60 || tr_acc = 0.81, val_acc = 0.60  (5.056 sec)
+coverage :  4.66808899726
+average_precision :  0.388651833791
+ranking_loss :  0.733617799451
+micro_f1 :  0.266381700468
+macro_f1 :  0.297026362108
+micro_precision :  0.266382200467
+macro_precision :  0.266382200467
+micro_recall :  0.351804291128
+macro_recall :  0.257009383627
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.244539266484
+cross-entropy :  0.39785690547
+accuracy :  0.266382200549
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58a10>, <tensorflow.python.ops.variables.Variable object at 0x7f6ce2b58950>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4890>, <tensorflow.python.ops.variables.Variable object at 0x7f6ced9c4950>]
+0/65 : label = 0.7719 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/65 : label = 0.5845 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 9: tr_loss = 0.62, val_loss 0.26 || tr_micro = 0.94, val_micro = 0.60 || tr_acc = 0.94, val_acc = 0.60  (4.873 sec)
+coverage :  4.68028040232
+average_precision :  0.386619932947
+ranking_loss :  0.736056080463
+micro_f1 :  0.263943419457
+macro_f1 :  0.28773292996
+micro_precision :  0.263943919456
+macro_precision :  0.263943919456
+micro_recall :  0.332805433567
+macro_recall :  0.253413498962
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.245352026821
+cross-entropy :  0.533173610833
+accuracy :  0.263943919537
+--------- Learning rate dropped to: 0.000000
+Stopping by patience method
+coverage :  4.37549527583
+average_precision :  0.437417454028
+ranking_loss :  0.675099055166
+micro_f1 :  0.324900444736
+macro_f1 :  0.263419013333
+micro_precision :  0.324900944735
+macro_precision :  0.324900944735
+micro_recall :  0.229483281512
+macro_recall :  0.309134648361
+p@1 :  0.000304785126486
+p@3 :  0.000101595042162
+p@5 :  6.09570252972e-05
+hamming_loss :  0.225033018389
+cross-entropy :  0.232674227429
+accuracy :  0.324900944834
+
+
+ ===================== 
+
+
+train_fold 3
+=====Configurations=====
+ {'project_prefix_path': '/home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1/', 'train_fold': 3, 'walks_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/walks/walks_80.txt', 'ckpt_dir': './citeseer/Checkpoints/', 'label_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels.npy', 'logs_dir': './citeseer/Logs/', 'results_folder': './citeseer/Results/', 'features_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/features.npy', 'label_fold_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels/1/3/'}
+############## Training Module 
+--------- Project Path: /home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1
+--------- Total number of nodes: 3313
+--------- Walk length: 29
+--------- Label Length: 6
+--------- Feature Length: 3703
+--------- Train nodes: 28
+--------- Val nodes: 6
+--------- Test nodes: 3278
+--------- Training from scratch
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 6.0344 : micro-F1 = 0.344 : accuracy = 0.344 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 3.4493 : micro-F1 = 0.531 : accuracy = 0.531 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 1: tr_loss = 2.98, val_loss 0.26 || tr_micro = 0.53, val_micro = 0.50 || tr_acc = 0.53, val_acc = 0.50  (5.265 sec)
+best step 1
+coverage :  4.8956680903
+average_precision :  0.35072198495
+ranking_loss :  0.77913361806
+micro_f1 :  0.220865881874
+macro_f1 :  0.274696598426
+micro_precision :  0.220866381873
+macro_precision :  0.220866381873
+micro_recall :  0.41093813856
+macro_recall :  0.206300759911
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.25971120602
+cross-entropy :  0.248533063774
+accuracy :  0.22086638194
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 1.5030 : micro-F1 = 0.781 : accuracy = 0.781 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 1.2284 : micro-F1 = 0.828 : accuracy = 0.828 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 2: tr_loss = 1.17, val_loss 0.40 || tr_micro = 0.83, val_micro = 0.50 || tr_acc = 0.83, val_acc = 0.50  (5.131 sec)
+coverage :  4.62721171446
+average_precision :  0.395464714257
+ranking_loss :  0.725442342892
+micro_f1 :  0.274557157025
+macro_f1 :  0.32195689986
+micro_precision :  0.274557657024
+macro_precision :  0.274557657024
+micro_recall :  0.429643363269
+macro_recall :  0.25743400119
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.241814114297
+cross-entropy :  0.439741770981
+accuracy :  0.274557657108
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 0.8846 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.6830 : micro-F1 = 0.922 : accuracy = 0.922 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 3: tr_loss = 0.71, val_loss 0.43 || tr_micro = 0.92, val_micro = 0.50 || tr_acc = 0.92, val_acc = 0.50  (5.101 sec)
+coverage :  4.38773642465
+average_precision :  0.435377262558
+ranking_loss :  0.67754728493
+micro_f1 :  0.322452214973
+macro_f1 :  0.350975609635
+micro_precision :  0.322452714972
+macro_precision :  0.322452714972
+micro_recall :  0.41991746763
+macro_recall :  0.30147965365
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.225849094977
+cross-entropy :  0.602819490604
+accuracy :  0.32245271507
+--------- Learning rate dropped to: 0.000100
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 1.3846 : micro-F1 = 0.812 : accuracy = 0.812 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 1.2078 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 4: tr_loss = 1.17, val_loss 0.38 || tr_micro = 0.87, val_micro = 0.50 || tr_acc = 0.88, val_acc = 0.50  (5.148 sec)
+coverage :  4.45179987797
+average_precision :  0.424700020338
+ranking_loss :  0.690359975595
+micro_f1 :  0.309639524311
+macro_f1 :  0.348371801773
+micro_precision :  0.309640024311
+macro_precision :  0.309640024311
+micro_recall :  0.430720425956
+macro_recall :  0.292458099317
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.230119991865
+cross-entropy :  0.412882819358
+accuracy :  0.309640024405
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 1.0950 : micro-F1 = 0.781 : accuracy = 0.781 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.6977 : micro-F1 = 0.844 : accuracy = 0.844 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 5: tr_loss = 0.72, val_loss 0.46 || tr_micro = 0.84, val_micro = 0.50 || tr_acc = 0.84, val_acc = 0.50  (5.093 sec)
+coverage :  4.32824893228
+average_precision :  0.445291844621
+ranking_loss :  0.665649786455
+micro_f1 :  0.334349713444
+macro_f1 :  0.35531148469
+micro_precision :  0.334350213443
+macro_precision :  0.334350213443
+micro_recall :  0.414420288616
+macro_recall :  0.310960077564
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.221883262152
+cross-entropy :  0.60373223117
+accuracy :  0.334350213545
+--------- Learning rate dropped to: 0.000010
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 1.5402 : micro-F1 = 0.781 : accuracy = 0.781 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 1.1954 : micro-F1 = 0.859 : accuracy = 0.859 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 6: tr_loss = 1.14, val_loss 0.39 || tr_micro = 0.86, val_micro = 0.50 || tr_acc = 0.86, val_acc = 0.50  (4.885 sec)
+coverage :  4.40756558877
+average_precision :  0.432072401871
+ranking_loss :  0.681513117755
+micro_f1 :  0.318486382149
+macro_f1 :  0.333332182833
+micro_precision :  0.318486882148
+macro_precision :  0.318486882148
+micro_recall :  0.387764518455
+macro_recall :  0.29230132576
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.227171039252
+cross-entropy :  0.430246114265
+accuracy :  0.318486882245
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 0.8506 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.7237 : micro-F1 = 0.922 : accuracy = 0.922 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 7: tr_loss = 0.75, val_loss 0.44 || tr_micro = 0.92, val_micro = 0.50 || tr_acc = 0.92, val_acc = 0.50  (6.035 sec)
+coverage :  4.57840146431
+average_precision :  0.403599755949
+ranking_loss :  0.715680292862
+micro_f1 :  0.284319207053
+macro_f1 :  0.324988892116
+micro_precision :  0.284319707052
+macro_precision :  0.284319707052
+micro_recall :  0.420878065372
+macro_recall :  0.264685937779
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.238560097621
+cross-entropy :  0.592322730178
+accuracy :  0.284319707138
+--------- Learning rate dropped to: 0.000001
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 1.4805 : micro-F1 = 0.750 : accuracy = 0.750 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 1.2302 : micro-F1 = 0.828 : accuracy = 0.828 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 8: tr_loss = 1.18, val_loss 0.40 || tr_micro = 0.83, val_micro = 0.50 || tr_acc = 0.83, val_acc = 0.50  (5.115 sec)
+coverage :  4.31147040879
+average_precision :  0.448088265202
+ranking_loss :  0.662294081757
+micro_f1 :  0.337705418141
+macro_f1 :  0.359353247665
+micro_precision :  0.33770591814
+macro_precision :  0.33770591814
+micro_recall :  0.416848609538
+macro_recall :  0.315796700293
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.220764693919
+cross-entropy :  0.421819183475
+accuracy :  0.337705918243
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c62536dd0>, <tensorflow.python.ops.variables.Variable object at 0x7f6c62536e10>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece990>, <tensorflow.python.ops.variables.Variable object at 0x7f6cebece890>]
+0/70 : label = 0.9677 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.7193 : micro-F1 = 0.953 : accuracy = 0.953 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 9: tr_loss = 0.74, val_loss 0.46 || tr_micro = 0.95, val_micro = 0.50 || tr_acc = 0.95, val_acc = 0.50  (5.336 sec)
+coverage :  4.20317266626
+average_precision :  0.466137888957
+ranking_loss :  0.640634533252
+micro_f1 :  0.359364966639
+macro_f1 :  0.37201240581
+micro_precision :  0.359365466638
+macro_precision :  0.359365466638
+micro_recall :  0.416266383193
+macro_recall :  0.336264460682
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.213544844417
+cross-entropy :  0.632730217148
+accuracy :  0.359365466748
+--------- Learning rate dropped to: 0.000000
+Stopping by patience method
+coverage :  4.8956680903
+average_precision :  0.35072198495
+ranking_loss :  0.77913361806
+micro_f1 :  0.220865881874
+macro_f1 :  0.274696598426
+micro_precision :  0.220866381873
+macro_precision :  0.220866381873
+micro_recall :  0.41093813856
+macro_recall :  0.206300759911
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.25971120602
+cross-entropy :  0.248533063774
+accuracy :  0.22086638194
+
+
+ ===================== 
+
+
+train_fold 4
+=====Configurations=====
+ {'project_prefix_path': '/home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1/', 'train_fold': 4, 'walks_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/walks/walks_80.txt', 'ckpt_dir': './citeseer/Checkpoints/', 'label_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels.npy', 'logs_dir': './citeseer/Logs/', 'results_folder': './citeseer/Results/', 'features_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/features.npy', 'label_fold_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels/1/4/'}
+############## Training Module 
+--------- Project Path: /home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1
+--------- Total number of nodes: 3313
+--------- Walk length: 29
+--------- Label Length: 6
+--------- Feature Length: 3703
+--------- Train nodes: 28
+--------- Val nodes: 6
+--------- Test nodes: 3278
+--------- Training from scratch
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 6.5819 : micro-F1 = 0.062 : accuracy = 0.062 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 3.3581 : micro-F1 = 0.437 : accuracy = 0.438 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 1: tr_loss = 2.86, val_loss 0.19 || tr_micro = 0.44, val_micro = 0.50 || tr_acc = 0.44, val_acc = 0.50  (5.297 sec)
+best step 1
+coverage :  4.4014643075
+average_precision :  0.433089282083
+ranking_loss :  0.680292861501
+micro_f1 :  0.319706638402
+macro_f1 :  0.353246806209
+micro_precision :  0.319707138402
+macro_precision :  0.319707138402
+micro_recall :  0.425819003536
+macro_recall :  0.301810216569
+p@1 :  0.000305064063453
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.226764287167
+cross-entropy :  0.235508059678
+accuracy :  0.319707138499
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 1.4514 : micro-F1 = 0.781 : accuracy = 0.781 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 1.0242 : micro-F1 = 0.797 : accuracy = 0.797 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 2: tr_loss = 0.98, val_loss 0.16 || tr_micro = 0.80, val_micro = 0.83 || tr_acc = 0.80, val_acc = 0.83  (4.986 sec)
+best step 2
+coverage :  4.21690054912
+average_precision :  0.463849908481
+ranking_loss :  0.643380109823
+micro_f1 :  0.356619390069
+macro_f1 :  0.374655721676
+micro_precision :  0.356619890068
+macro_precision :  0.356619890068
+micro_recall :  0.438944612341
+macro_recall :  0.326793594198
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.214460036608
+cross-entropy :  0.403445850317
+accuracy :  0.356619890177
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.8496 : micro-F1 = 0.844 : accuracy = 0.844 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.5714 : micro-F1 = 0.891 : accuracy = 0.891 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 3: tr_loss = 0.60, val_loss 0.19 || tr_micro = 0.89, val_micro = 0.83 || tr_acc = 0.89, val_acc = 0.83  (5.208 sec)
+coverage :  4.30079316656
+average_precision :  0.449867805573
+ranking_loss :  0.660158633313
+micro_f1 :  0.339840866584
+macro_f1 :  0.362426162461
+micro_precision :  0.339841366583
+macro_precision :  0.339841366583
+micro_recall :  0.436150488368
+macro_recall :  0.31002258938
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.220052877771
+cross-entropy :  0.606166700143
+accuracy :  0.339841366687
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.3200 : micro-F1 = 1.000 : accuracy = 1.000 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.4096 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 4: tr_loss = 0.46, val_loss 0.17 || tr_micro = 0.97, val_micro = 1.00 || tr_acc = 0.97, val_acc = 1.00  (5.239 sec)
+coverage :  4.30079316656
+average_precision :  0.449867805573
+ranking_loss :  0.660158633313
+micro_f1 :  0.339840866584
+macro_f1 :  0.356118722759
+micro_precision :  0.339841366583
+macro_precision :  0.339841366583
+micro_recall :  0.416346106245
+macro_recall :  0.311114661003
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.220052877771
+cross-entropy :  0.769953352123
+accuracy :  0.339841366687
+--------- Learning rate dropped to: 0.000100
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.6343 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.5823 : micro-F1 = 0.922 : accuracy = 0.922 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 5: tr_loss = 0.61, val_loss 0.17 || tr_micro = 0.92, val_micro = 0.83 || tr_acc = 0.92, val_acc = 0.83  (5.133 sec)
+coverage :  4.35570469799
+average_precision :  0.440715883669
+ranking_loss :  0.671140939597
+micro_f1 :  0.328858560303
+macro_f1 :  0.356802519287
+micro_precision :  0.328859060302
+macro_precision :  0.328859060302
+micro_recall :  0.441734921992
+macro_recall :  0.299263847281
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.223713646532
+cross-entropy :  0.586829455278
+accuracy :  0.328859060403
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.5094 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.4072 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 6: tr_loss = 0.46, val_loss 0.18 || tr_micro = 0.97, val_micro = 1.00 || tr_acc = 0.97, val_acc = 1.00  (4.520 sec)
+coverage :  4.25808419768
+average_precision :  0.456985967053
+ranking_loss :  0.651616839536
+micro_f1 :  0.348382660358
+macro_f1 :  0.354122284025
+micro_precision :  0.348383160357
+macro_precision :  0.348383160357
+micro_recall :  0.397680381444
+macro_recall :  0.319164909357
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.217205613179
+cross-entropy :  0.807828804049
+accuracy :  0.348383160464
+--------- Learning rate dropped to: 0.000010
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.4309 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.5602 : micro-F1 = 0.953 : accuracy = 0.953 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 7: tr_loss = 0.61, val_loss 0.19 || tr_micro = 0.95, val_micro = 0.83 || tr_acc = 0.95, val_acc = 0.83  (5.440 sec)
+coverage :  4.19402074436
+average_precision :  0.467663209274
+ranking_loss :  0.638804148871
+micro_f1 :  0.361195351019
+macro_f1 :  0.371681235893
+micro_precision :  0.361195851019
+macro_precision :  0.361195851019
+micro_recall :  0.423277653928
+macro_recall :  0.331297795579
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.21293471629
+cross-entropy :  0.576476447121
+accuracy :  0.361195851129
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.6388 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.4184 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 8: tr_loss = 0.47, val_loss 0.18 || tr_micro = 0.91, val_micro = 1.00 || tr_acc = 0.91, val_acc = 1.00  (5.296 sec)
+coverage :  4.38163514338
+average_precision :  0.43639414277
+ranking_loss :  0.676327028676
+micro_f1 :  0.323672471226
+macro_f1 :  0.313814817595
+micro_precision :  0.323672971225
+macro_precision :  0.323672971225
+micro_recall :  0.334517254793
+macro_recall :  0.295526367137
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.225442342892
+cross-entropy :  0.80681134904
+accuracy :  0.323672971324
+--------- Learning rate dropped to: 0.000001
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.7221 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.5949 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 9: tr_loss = 0.63, val_loss 0.17 || tr_micro = 0.94, val_micro = 0.83 || tr_acc = 0.94, val_acc = 0.83  (5.468 sec)
+coverage :  4.36028065894
+average_precision :  0.43995322351
+ranking_loss :  0.672056131788
+micro_f1 :  0.327943368113
+macro_f1 :  0.364214346767
+micro_precision :  0.327943868112
+macro_precision :  0.327943868112
+micro_recall :  0.457401166716
+macro_recall :  0.302571860257
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.224018710596
+cross-entropy :  0.561333604862
+accuracy :  0.327943868212
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6cecdaf190>, <tensorflow.python.ops.variables.Variable object at 0x7f6cec7c71d0>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceccdcf90>, <tensorflow.python.ops.variables.Variable object at 0x7f6cecf7c610>]
+0/70 : label = 0.3868 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan50/70 : label = 0.4035 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 10: tr_loss = 0.45, val_loss 0.18 || tr_micro = 0.94, val_micro = 0.83 || tr_acc = 0.94, val_acc = 0.83  (5.432 sec)
+coverage :  4.4273947529
+average_precision :  0.428767541184
+ranking_loss :  0.68547895058
+micro_f1 :  0.314520549325
+macro_f1 :  0.320906851384
+micro_precision :  0.314521049324
+macro_precision :  0.314521049324
+micro_recall :  0.358322729829
+macro_recall :  0.290566898229
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.228492983527
+cross-entropy :  0.762305475289
+accuracy :  0.31452104942
+--------- Learning rate dropped to: 0.000000
+Stopping by patience method
+coverage :  4.21690054912
+average_precision :  0.463849908481
+ranking_loss :  0.643380109823
+micro_f1 :  0.356619390069
+macro_f1 :  0.374655721676
+micro_precision :  0.356619890068
+macro_precision :  0.356619890068
+micro_recall :  0.438944612341
+macro_recall :  0.326793594198
+p@1 :  0.0
+p@3 :  0.000101688021151
+p@5 :  6.10128126907e-05
+hamming_loss :  0.214460036608
+cross-entropy :  0.403445850317
+accuracy :  0.356619890177
+
+
+ ===================== 
+
+
+train_fold 5
+=====Configurations=====
+ {'project_prefix_path': '/home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1/', 'train_fold': 5, 'walks_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/walks/walks_80.txt', 'ckpt_dir': './citeseer/Checkpoints/', 'label_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels.npy', 'logs_dir': './citeseer/Logs/', 'results_folder': './citeseer/Results/', 'features_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/features.npy', 'label_fold_dir': '/home/priyesh/Desktop/Codes/Sample_Run/Datasets/citeseer/labels/1/5/'}
+############## Training Module 
+--------- Project Path: /home/priyesh/Desktop/Codes/Sample_Run/Seq_PPI_LSTM1
+--------- Total number of nodes: 3313
+--------- Walk length: 29
+--------- Label Length: 6
+--------- Feature Length: 3703
+--------- Train nodes: 25
+--------- Val nodes: 5
+--------- Test nodes: 3282
+--------- Training from scratch
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 6.3942 : micro-F1 = 0.125 : accuracy = 0.125 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 3.0874 : micro-F1 = 0.453 : accuracy = 0.453 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 1: tr_loss = 2.73, val_loss 0.11 || tr_micro = 0.45, val_micro = 0.80 || tr_acc = 0.45, val_acc = 0.80  (5.086 sec)
+best step 1
+coverage :  4.05606337599
+average_precision :  0.490656104002
+ranking_loss :  0.611212675198
+micro_f1 :  0.388786824684
+macro_f1 :  0.284594042928
+micro_precision :  0.388787324683
+macro_precision :  0.388787324683
+micro_recall :  0.237304197741
+macro_recall :  0.355423917854
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.203737558399
+cross-entropy :  0.277981400287
+accuracy :  0.388787324802
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 1.0341 : micro-F1 = 0.812 : accuracy = 0.812 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.8917 : micro-F1 = 0.859 : accuracy = 0.859 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 2: tr_loss = 0.89, val_loss 0.12 || tr_micro = 0.86, val_micro = 0.80 || tr_acc = 0.86, val_acc = 0.80  (4.998 sec)
+coverage :  3.87020109689
+average_precision :  0.521633150518
+ranking_loss :  0.574040219378
+micro_f1 :  0.425959280492
+macro_f1 :  0.27661529491
+micro_precision :  0.425959780492
+macro_precision :  0.425959780492
+micro_recall :  0.216015945616
+macro_recall :  0.384473682548
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.191346739793
+cross-entropy :  0.435264197893
+accuracy :  0.425959780622
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 0.6675 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.4610 : micro-F1 = 0.922 : accuracy = 0.922 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 3: tr_loss = 0.50, val_loss 0.15 || tr_micro = 0.92, val_micro = 0.80 || tr_acc = 0.92, val_acc = 0.80  (4.785 sec)
+coverage :  3.85039609994
+average_precision :  0.524933983344
+ranking_loss :  0.570079219988
+micro_f1 :  0.429920279882
+macro_f1 :  0.364528166286
+micro_precision :  0.429920779881
+macro_precision :  0.429920779881
+micro_recall :  0.344023200455
+macro_recall :  0.387633516533
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.190026406663
+cross-entropy :  0.637817845696
+accuracy :  0.429920780012
+--------- Learning rate dropped to: 0.000100
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 0.9091 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.9059 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 4: tr_loss = 0.90, val_loss 0.12 || tr_micro = 0.97, val_micro = 0.80 || tr_acc = 0.97, val_acc = 0.80  (5.346 sec)
+coverage :  3.91590493601
+average_precision :  0.514015843998
+ranking_loss :  0.583180987203
+micro_f1 :  0.416818512671
+macro_f1 :  0.277355135737
+micro_precision :  0.41681901267
+macro_precision :  0.41681901267
+micro_recall :  0.219902748992
+macro_recall :  0.375446587546
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.194393662401
+cross-entropy :  0.437094527444
+accuracy :  0.416819012797
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 0.5100 : micro-F1 = 0.937 : accuracy = 0.938 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.4495 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 5: tr_loss = 0.49, val_loss 0.15 || tr_micro = 0.97, val_micro = 0.80 || tr_acc = 0.97, val_acc = 0.80  (5.116 sec)
+coverage :  3.91590493601
+average_precision :  0.514015843998
+ranking_loss :  0.583180987203
+micro_f1 :  0.416818512671
+macro_f1 :  0.345317555772
+micro_precision :  0.41681901267
+macro_precision :  0.41681901267
+micro_recall :  0.319797372708
+macro_recall :  0.375265213513
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.194393662401
+cross-entropy :  0.636964615784
+accuracy :  0.416819012797
+--------- Learning rate dropped to: 0.000010
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 1.3254 : micro-F1 = 0.750 : accuracy = 0.750 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.9158 : micro-F1 = 0.844 : accuracy = 0.844 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 6: tr_loss = 0.89, val_loss 0.12 || tr_micro = 0.84, val_micro = 0.80 || tr_acc = 0.84, val_acc = 0.80  (4.968 sec)
+coverage :  3.8717245582
+average_precision :  0.521379240301
+ranking_loss :  0.574344911639
+micro_f1 :  0.425654588232
+macro_f1 :  0.278558584138
+micro_precision :  0.425655088231
+macro_precision :  0.425655088231
+micro_recall :  0.218691753932
+macro_recall :  0.3835590943
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.19144830388
+cross-entropy :  0.447853563204
+accuracy :  0.425655088361
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 0.4788 : micro-F1 = 0.969 : accuracy = 0.969 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.4629 : micro-F1 = 0.984 : accuracy = 0.984 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 7: tr_loss = 0.49, val_loss 0.13 || tr_micro = 0.98, val_micro = 0.80 || tr_acc = 0.98, val_acc = 0.80  (4.956 sec)
+coverage :  3.94180377818
+average_precision :  0.509699370303
+ranking_loss :  0.588360755637
+micro_f1 :  0.411638744238
+macro_f1 :  0.362409894807
+micro_precision :  0.411639244238
+macro_precision :  0.411639244238
+micro_recall :  0.354112228175
+macro_recall :  0.37110680707
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.196120251879
+cross-entropy :  0.626875279561
+accuracy :  0.411639244363
+--------- Learning rate dropped to: 0.000001
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 1.1741 : micro-F1 = 0.781 : accuracy = 0.781 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.8848 : micro-F1 = 0.875 : accuracy = 0.875 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 8: tr_loss = 0.88, val_loss 0.12 || tr_micro = 0.87, val_micro = 0.80 || tr_acc = 0.88, val_acc = 0.80  (4.966 sec)
+coverage :  3.90219378428
+average_precision :  0.516301035954
+ranking_loss :  0.580438756856
+micro_f1 :  0.419560743017
+macro_f1 :  0.275689258261
+micro_precision :  0.419561243017
+macro_precision :  0.419561243017
+micro_recall :  0.216751452878
+macro_recall :  0.3786511744
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.193479585619
+cross-entropy :  0.448425529164
+accuracy :  0.419561243144
+------ Graph Reset | Next iteration -----
+[<tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e610>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53d5e650>, <tensorflow.python.ops.variables.Variable object at 0x7f6c53c0fb90>, <tensorflow.python.ops.variables.Variable object at 0x7f6ceab38d50>]
+0/63 : label = 0.7277 : micro-F1 = 0.906 : accuracy = 0.906 : gr_H = nan : gr_I = nan : gr_LI = nan50/63 : label = 0.4551 : micro-F1 = 0.953 : accuracy = 0.953 : gr_H = nan : gr_I = nan : gr_LI = nan
+Epoch 9: tr_loss = 0.50, val_loss 0.13 || tr_micro = 0.95, val_micro = 0.80 || tr_acc = 0.95, val_acc = 0.80  (4.914 sec)
+coverage :  3.96922608166
+average_precision :  0.50512898639
+ranking_loss :  0.593845216332
+micro_f1 :  0.406154283545
+macro_f1 :  0.345239404844
+micro_precision :  0.406154783545
+macro_precision :  0.406154783545
+micro_recall :  0.326430751777
+macro_recall :  0.366349180303
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.197948405444
+cross-entropy :  0.636889130359
+accuracy :  0.406154783668
+--------- Learning rate dropped to: 0.000000
+Stopping by patience method
+coverage :  4.05606337599
+average_precision :  0.490656104002
+ranking_loss :  0.611212675198
+micro_f1 :  0.388786824684
+macro_f1 :  0.284594042928
+micro_precision :  0.388787324683
+macro_precision :  0.388787324683
+micro_recall :  0.237304197741
+macro_recall :  0.355423917854
+p@1 :  0.000304692260817
+p@3 :  0.000101564086939
+p@5 :  6.09384521633e-05
+hamming_loss :  0.203737558399
+cross-entropy :  0.277981400287
+accuracy :  0.388787324802
+
+
+ ===================== 
+
+

@@ -47,7 +47,7 @@ class RNNLM_v1(object):
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
             # feed_dict[self.arch.initial_state] = state
-            pred_labels = sess.run([self.arch.label_sigmoid], feed_dict=feed_dict)
+            pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
             self.dataset.accumulate_label_cache(pred_labels, seq)
 
             #print('%d/%d'%(step,tot), end="\r")
@@ -78,11 +78,13 @@ class RNNLM_v1(object):
         self.config.data_sets._len_vocab = self.dataset.all_features.shape[0]
         self.config.data_sets._len_labels = self.dataset.all_labels.shape[1]
         self.config.data_sets._len_features = self.dataset.all_features.shape[1]
+        self.config.data_sets._multi_label = (np.sum(self.dataset.all_labels, axis=1) > 1).any()
         self.config.num_steps = self.dataset.all_walks.shape[1]
 
         print('--------- Project Path: ' + self.config.codebase_root_path + self.config.project_name)
         print('--------- Total number of nodes: ' + str(self.config.data_sets._len_vocab))
         print('--------- Walk length: ' + str(self.config.num_steps))
+        print('--------- Multi-Label: ' + str(self.config.data_sets._multi_label))
         print('--------- Label Length: ' + str(self.config.data_sets._len_labels))
         print('--------- Feature Length: ' + str(self.config.data_sets._len_features))
         print('--------- Train nodes: ' + str(np.sum(self.dataset.train_nodes)))
@@ -161,11 +163,11 @@ class RNNLM_v1(object):
 
             # Writes loss summary @last step of the epoch
             if (step + 1) < tot:
-                _, loss_value, pred_labels = sess.run([train_op, self.loss, self.arch.label_sigmoid],
+                _, loss_value, pred_labels = sess.run([train_op, self.loss, self.arch.label_preds],
                                                       feed_dict=feed_dict)
             else:
                 _, loss_value, summary, pred_labels = sess.run(
-                    [train_op, self.loss, self.summary, self.arch.label_sigmoid], feed_dict=feed_dict)
+                    [train_op, self.loss, self.summary, self.arch.label_preds], feed_dict=feed_dict)
                 if summary_writer != None:
                     summary_writer.add_summary(summary, self.arch.global_step.eval(session=sess))
                     summary_writer.flush()
@@ -212,7 +214,7 @@ class RNNLM_v1(object):
         patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
         improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
 
-        inc = 5  # override number of inner iterations for first bootstrap step
+        inc = 3  # override number of inner iterations for first bootstrap step
         validation_loss = 1e6
         done_looping = False
         step = 1
@@ -364,7 +366,7 @@ if __name__ == "__main__":
             setattr(x, k[-1], vals[idx])
             print(k[-1], vals[idx])
 
-        cfg.create(cfg.dataset_name)  # "run-"+str(idx))
+        cfg.create(cfg.dataset_name + str(cfg.train_percent) + '')  # "run-"+str(idx))
         cfg.init2()
         print("=====Configurations=====\n", cfg.__dict__)
 
