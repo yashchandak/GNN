@@ -53,6 +53,7 @@ class Network(object):
 
         Returns: (batch_size, hidden_size )
         """
+
         class MyLSTMCell(RNNCell):
             '''Vanilla LSTM implemented with same initializations as BN-LSTM'''
 
@@ -126,8 +127,9 @@ class Network(object):
 	    inp_cat = [tf.concat(1, [inputs[tstep], inputs2[tstep]]) for tstep in range(len(inputs))]
 
         with tf.variable_scope('MyCell'):
-            #cell = tf.nn.rnn_cell.LSTMCell(hidden_size)
-            cell = MyLSTMCell(hidden_size)
+            #cell = tf.nn.rnn_cell.GRUCell(hidden_size)
+            cell = tf.nn.rnn_cell.LSTMCell(hidden_size)
+            #cell = MyLSTMCell(hidden_size)
             #cell = BNLSTMCell(hidden_size)
             #cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = keep_prob)
             #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=False)
@@ -143,7 +145,7 @@ class Network(object):
                     scope.reuse_variables()
 
                 # How to pass state info for subsequent sentences
-                self.final_state = state
+            self.final_state = state
 
         context = inputs[-1] #Treat the attribute of node-of-interest as context for attention
         att_state = self.attention(rnn_outputs, context)
@@ -151,7 +153,7 @@ class Network(object):
         #outputs = tf.unpack(outputs,axis=0)
         with tf.variable_scope('RNNDropout'):
             self.variable_summaries(self.final_state, 'final_state') #summary wtiter throwing 'noneType' error otherwise
-            #rnn_outputs = tf.nn.dropout(self.final_state[1], keep_prob_out)
+            #rnn_outputs = tf.nn.dropout(self.final_state[0], keep_prob_out)
             rnn_outputs = tf.nn.dropout(att_state, keep_prob_out)
 
         return rnn_outputs
@@ -172,8 +174,9 @@ class Network(object):
 
     def attention(self, states, context, attn_size=None):
         states = tf.pack(states) #convert from list to tensor
+        states = tf.transpose(states, [1,0,2]) # [Num_step, Batch, state_size] -> [Batch, Num_step, state_size]
 
-        num_step, batch_size, state_size = states.get_shape().as_list()
+        batch_size, num_step, state_size = states.get_shape().as_list()
         if attn_size == None:  # size of the intermediate attention representation
             attn_size = state_size  # by default A = state_size
         attn_length = num_step #length of attention vector = Num_step
@@ -188,7 +191,10 @@ class Network(object):
         y = tf.reshape(y, [-1, 1, 1, attn_size])  # Reshape into 4D: [Batch, 1, 1, A]
 
         # Calculating alpha
-        s = tf.reduce_sum(attention_softmax_weights * tf.nn.tanh(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
+        s = tf.reduce_sum(attention_softmax_weights * (attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
+        #s = tf.reduce_sum(attention_softmax_weights * tf.nn.relu(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
+        #a = s # [Batch, Num_step]
+        #a = tf.nn.sigmoid(s) # [Batch, Num_step]
         a = tf.nn.softmax(s) # [Batch, Num_step]
 
         # Calculate context c
