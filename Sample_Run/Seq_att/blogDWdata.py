@@ -20,6 +20,7 @@ class DataSet(object):
         self.test_nodes  = np.concatenate(([False], np.load(cfg.label_fold_dir + 'test_ids.npy')))
         # [!!!IMP!!]Assert no overlap between test/val/train nodes
 
+        self.change = 0
         self.label_cache, self.update_cache = {0:list(self.all_labels[0])}, {}
 
     def get_fetaures(self, path):
@@ -66,12 +67,18 @@ class DataSet(object):
         if len(self.label_cache.items()) > 1:
             #Non-first time updates
             for k, v in self.update_cache.items():
-                self.label_cache[k] =  list((1-alpha)*np.array(self.label_cache[k]) + alpha*(v[0]/v[1]))
+                new = (1-alpha)*np.array(self.label_cache[k]) + alpha*(v[0]/v[1])
+                self.change += np.mean((new - self.label_cache[k]) **2)
+                self.label_cache[k] =  list(new)
         else:
             #First time update
             for k, v in self.update_cache.items():
-                self.label_cache[k] = list(v[0] / v[1])
+                new = v[0] / v[1]
+                self.change += np.mean(new**2)
+                self.label_cache[k] = list(new)
 
+        print("\nChange in label: :", np.sqrt(self.change/self.cfg.data_sets._len_vocab)*100)
+        self.change = 0
         self.update_cache = {}
 
     def get_nodes(self, dataset):

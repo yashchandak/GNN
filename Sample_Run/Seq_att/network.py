@@ -208,7 +208,7 @@ class Network(object):
 
         # Calculating alpha
         #s = tf.reduce_sum(attention_softmax_weights * tf.nn.tanh(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
-        s = tf.reduce_sum(attention_softmax_weights * tf.nn.relu(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
+        s = tf.reduce_sum(attention_softmax_weights * tf.nn.tanh(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
         #a = s # [Batch, Num_step]
         #a = tf.nn.sigmoid(s) # [Batch, Num_step]
         a = tf.nn.softmax(s) # [Batch, Num_step]

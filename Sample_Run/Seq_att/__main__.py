@@ -12,6 +12,7 @@ import Config as conf
 import Eval_Calculate_Performance as perf
 from Eval_utils import write_results
 import network as architecture
+import argparse
 from blogDWdata import DataSet
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
@@ -19,7 +20,6 @@ os.environ["CUDA_VISIBLE_DEVICES"]="1"
 
 np.random.seed(1234)
 tf.set_random_seed(1234)
-cfg = conf.Config()
 
 class RNNLM_v1(object):
     def __init__(self, config):
@@ -214,11 +214,12 @@ class RNNLM_v1(object):
         patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
         improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
 
-        inc = 3  # override number of inner iterations for first bootstrap step
+        inc = 4  # override number of inner iterations for first bootstrap step
         validation_loss = 1e6
         done_looping = False
         step = 1
         best_step = -1
+        flag = True
         losses = []
         learning_rate = self.config.solver.learning_rate
         label_in = None  # Ignore the label inputs during bootstrap | first run
@@ -229,8 +230,11 @@ class RNNLM_v1(object):
             epoch = step  # self.arch.global_step.eval(session=sess)
 
             print("------ Graph Reset | Next iteration -----")
-            # sess.run(self.init)  # reset all weights
-            print([v for v in tf.trainable_variables()])  # Just to monitor the trainable variables in tf graph
+            if inc == 1 and flag: #reset after first bootstrap
+                print("=========Weight reset==========\n\n\n")
+                sess.run(self.init)  # reset all weights
+                flag = False
+            print([v.name for v in tf.trainable_variables()])  # Just to monitor the trainable variables in tf graph
             start_time = time.time()
             # Fit the model to predict best possible labels given the current estimates of unlabeled values
             average_loss, tr_micro, tr_macro, tr_accuracy = self.fit(sess, label_in, inc)
@@ -330,7 +334,7 @@ def init_Model(config):
     return model, sess
 
 
-def train_DNNModel():
+def train_DNNModel(cfg):
     # global cfg
     print('############## Training Module ')
     config = deepcopy(cfg)
@@ -340,16 +344,52 @@ def train_DNNModel():
         metrics = model.fit_outer(sess)
         return metrics
 
-def execute():
+def execute(cfg):
     with tf.device('/gpu:1'):
-        metrics = train_DNNModel()
+        metrics = train_DNNModel(cfg)
         return metrics
 
 
-if __name__ == "__main__":
+def get_argumentparser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--path", default='/home/priyesh/Desktop/Codes/Sample_Run/', help="Base path for the code")
+    parser.add_argument("--project", default='Seq_att', help="Project folder")
+    parser.add_argument("--dataset", default='cora', help="Dataset to evluate")
+    parser.add_argument("--percent", default=4, help="Training percent")
+    parser.add_argument("--folds", default='1_2_3_4_5', help="Training folds")
+    parser.add_argument("--retrain", default=False, help="Retrain flag")
+    parser.add_argument("--debug", default=False, help="Debug flag")
+    parser.add_argument("--batch_size", default=32, help="Batch size")
+    parser.add_argument("--max_depth", default=999, help="Maximum path depth")
+    parser.add_argument("--max_outer", default=100, help="Maximum outer epoch")
+    parser.add_argument("--max_inner", default=1, help="Maximum inner epoch")
+    parser.add_argument("--pat", default=3, help="Patience")
+    parser.add_argument("--pat_inc", default=2, help="Patience Increase")
+    parser.add_argument("--pat_improve", default=0.9999, help="Improvement threshold for patience")
+    parser.add_argument("--lr", default=0.001, help="Learning rate")
+    parser.add_argument("--lu", default=0.75, help="Label update rate")
+    parser.add_argument("--l2", default=1e-3, help="L2 loss")
+    parser.add_argument("--opt", default='adam', help="Optimizer type (adam, rmsprop, sgd)")
+    parser.add_argument("--reduce", default=32, help="Reduce Attribute dimensions to")
+    parser.add_argument("--bin_upd", default=False, help="Binary updates for labels")
+    parser.add_argument("--hidden", default=16, help="Hidden units")
+    parser.add_argument("--drop_in", default=0.5, help="Dropout for input")
+    parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer")
+    parser.add_argument("--folder_suffix", default='', help="folder name suffix")
+
+    return parser
+
+
+def main():
+    parser = get_argumentparser()
+    args = parser.parse_args()
+    print("=====Configurations=====\n", args)
+    cfg = conf.Config(args)
+
+    #Meta-script for running codes **SEQUENTIALLY**
     meta_param = {  #('dataset_name',):['blogcatalog_ncc'],
         # ('solver', 'learning_rate'): [0.001],
-        ('train_fold',): [1,2,3,4,5]
+        ('train_fold',): np.fromstring(args.folds, sep='_', dtype=int)
     }
 
     variations = len(meta_param.values()[0])
@@ -366,14 +406,18 @@ if __name__ == "__main__":
             setattr(x, k[-1], vals[idx])
             print(k[-1], vals[idx])
 
-        cfg.create(cfg.dataset_name + str(cfg.train_percent) + '')  # "run-"+str(idx))
+        cfg.create(cfg.dataset_name + str(cfg.train_percent) + args.folder_suffix)  # "run-"+str(idx))
         cfg.init2()
-        print("=====Configurations=====\n", cfg.__dict__)
+        #print("=====Configurations=====\n", cfg.__dict__)
 
         # All set... GO!
-        metrics = execute()
+        metrics = execute(cfg)
         all_results[cfg.train_percent][meta_param[('train_fold',)][idx]] = metrics
         print('\n\n ===================== \n\n')
 
         write_results(cfg, all_results)
 
+
+
+if __name__ == "__main__":
+    main()

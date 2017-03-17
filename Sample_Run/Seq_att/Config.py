@@ -3,48 +3,79 @@ import sys, os, shutil
 
 class Config(object):
 
+    def __init__(self, args):
+        self.codebase_root_path = args.path
+        sys.path.insert(0, self.codebase_root_path)
 
-    codebase_root_path = '/home/priyesh/Desktop/Codes/Sample_Run/'
-    sys.path.insert(0, codebase_root_path)
+        ####  Directory paths ####
+        # Folder name and project name is the same
+        self.project_name = args.project
+        self.dataset_name = args.dataset
+        self.train_percent = args.percent
+        self.train_fold = args.folds
 
-    ####  Directory paths ####
-    #Folder name and project name is the same
-    project_name = 'Seq_att'
-    dataset_name = 'MLGene'
-    train_percent = 4
-    train_fold  = 1
-    
-    logs_d   = '/Logs/'
-    ckpt_d   = '/Checkpoints/'
-    embed_d  = '/Embeddings/'
-    result_d = '/Results/'
+        self.logs_d = '/Logs/'
+        self.ckpt_d = '/Checkpoints/'
+        self.embed_d = '/Embeddings/'
+        self.result_d = '/Results/'
 
-    #Retrain
-    retrain = True
-    #Debug with small dataset
-    debug = False
+        # Retrain
+        self.retrain = args.retrain
+        # Debug with small dataset
+        self.debug = args.debug
 
-    # Batch size
-    batch_size = 32
-    #maximum depth for trajecory from NOI
-    max_depth = 999
-    #Number of steps to run trainer
-    max_outer_epochs = 100
-    max_inner_epochs = 1
-    #Validation frequence
-    val_epochs_freq = 1
-    #Model save frequency
-    save_epochs_after= 0
+        # Batch size
+        self.batch_size = args.batch_size
+        # maximum depth for trajecory from NOI
+        self.max_depth = args.max_depth
+        # Number of steps to run trainer
+        self.max_outer_epochs = args.max_outer
+        self.max_inner_epochs = args.max_inner
+        # Validation frequence
+        self.val_epochs_freq = 1
+        # Model save frequency
+        self.save_epochs_after = 0
 
-    #earlystopping hyperparametrs
-    patience = 3 # look as this many epochs regardless
-    patience_increase = 2 # wait this much longer when a new best is found
-    improvement_threshold = 0.9999  # a relative improvement of this much is considered significant
+        # earlystopping hyperparametrs
+        self.patience = args.pat  # look as this many epochs regardless
+        self.patience_increase = args.pat_inc  # wait this much longer when a new best is found
+        self.improvement_threshold = args.pat_improve  # a relative improvement of this much is considered significant
 
-    metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
-               'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss','cross-entropy','accuracy']
-    
-    def __init__(self):
+        self.metrics = ['coverage', 'average_precision', 'ranking_loss', 'micro_f1', 'macro_f1', 'micro_precision',
+                   'macro_precision', 'micro_recall', 'macro_recall', 'p@1', 'p@3', 'p@5', 'hamming_loss',
+                   'cross-entropy', 'accuracy']
+
+        class Solver(object):
+            def __init__(self, args):
+                # Initial learning rate
+                self.learning_rate = args.lr
+                self.label_update_rate = args.lu
+
+                # optimizer
+                if args.opt == 'adam': self.opt = tf.train.AdamOptimizer
+                elif args.opt == 'rmsprop': self.opt = tf.train.RMSPropOptimizer
+                elif args.opt == 'sgd': self.opt= tf.train.GradientDescentOptimizer
+                else: raise ValueError('Undefined type of optmizer')
+
+                self._optimizer = self.opt(self.learning_rate)
+                self._curr_label_loss = True
+                self._L2loss = args.l2
+
+        class Data_sets(object):
+            def __init__(self, args):
+                self.reduced_dims = args.reduce
+                self.binary_label_updates = args.bin_upd
+
+        class RNNArchitecture(object):
+            def __init__(self, args):
+                self._hidden_size = args.hidden
+                self._keep_prob_in = 1 - args.drop_in
+                self._keep_prob_out = 1 - args.drop_out
+
+        self.solver = Solver(args)
+        self.data_sets = Data_sets(args)
+        self.mRNN = RNNArchitecture(args)
+
         self.init2()
 
     def init2(self):
@@ -80,32 +111,6 @@ class Config(object):
         #self.check_n_create(self.embed_dir)
         self.check_n_create(self.results_folder)
         
-    class Solver(object):
-        def __init__(self):
-            #Initial learning rate
-            self.learning_rate = 0.001
-            self.label_update_rate = .75
-            #optimizer
-            self.opt = tf.train.AdamOptimizer
-            #self.opt= tf.train.GradientDescentOptimizer
-            self._optimizer = self.opt(self.learning_rate)
-            self._curr_label_loss = True
-            self._L2loss = 1e-3
-            
 
-    class Data_sets(object):
-        def __init__(self):
-            self.reduced_dims = False
-            self.binary_label_updates = False
-
-    class RNNArchitecture(object):
-        def __init__(self):
-            self._hidden_size = 16
-            self._keep_prob_in = 1
-            self._keep_prob_out = .8
-
-    solver = Solver()
-    data_sets = Data_sets()
-    mRNN = RNNArchitecture()
 
 
