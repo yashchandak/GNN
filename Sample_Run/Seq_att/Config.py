@@ -31,6 +31,7 @@ class Config(object):
         # Number of steps to run trainer
         self.max_outer_epochs = args.max_outer
         self.max_inner_epochs = args.max_inner
+        self.boot_epochs = args.boot_epochs
         # Validation frequence
         self.val_epochs_freq = 1
         # Model save frequency

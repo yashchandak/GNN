@@ -64,18 +64,13 @@ class DataSet(object):
         #Average all the predictions made for the corresponding nodes and reset cache
         alpha = self.cfg.solver.label_update_rate
 
-        if len(self.label_cache.items()) > 1:
-            #Non-first time updates
-            for k, v in self.update_cache.items():
-                new = (1-alpha)*np.array(self.label_cache[k]) + alpha*(v[0]/v[1])
-                self.change += np.mean((new - self.label_cache[k]) **2)
-                self.label_cache[k] =  list(new)
-        else:
-            #First time update
-            for k, v in self.update_cache.items():
-                new = v[0] / v[1]
-                self.change += np.mean(new**2)
-                self.label_cache[k] = list(new)
+        if len(self.label_cache.items()) <= 1: alpha =1
+
+        for k, v in self.update_cache.items():
+            old = self.label_cache.get(k, self.label_cache[0])
+            new = (1-alpha)*np.array(old) + alpha*(v[0]/v[1])
+            self.change += np.mean((new - old) **2)
+            self.label_cache[k] =  list(new)
 
         print("\nChange in label: :", np.sqrt(self.change/self.cfg.data_sets._len_vocab)*100)
         self.change = 0
@@ -131,3 +126,42 @@ class DataSet(object):
             seq = self.node_seq[pos[i: i + batch_size]]
 
             yield (x, x2, seq, y, tot)
+
+
+    def next_batch_same(self, dataset, node_count=1):
+
+        nodes = self.get_nodes(dataset)
+
+        pos = []
+        counts = []
+        seq = []
+        for node in np.where(nodes)[0]:
+            temp = np.where(self.node_seq == node)[0]
+            counts.append(len(temp))
+            seq.append(node)
+            pos.extend(temp)
+
+        pos = np.array(pos)
+
+        start = 0
+        max_len = self.all_walks.shape[1]
+        # Get a batch of all walks for 'node_count' number of node
+        for idx in range(0, len(counts), node_count):
+            #print(idx)
+            stop = start + np.sum(counts[idx:idx+node_count]) #start + total number of walks to be consiudered this time
+            x = self.all_walks[pos[start:stop]] #get the walks corresponding to respective positions
+
+            temp = np.array(x)>0  #get locations of all zero inputs
+            lengths = max_len - np.sum(temp, axis=1)
+
+            x = np.swapaxes(x, 0, 1) # convert from (batch x step) to (step x batch)
+
+            # get labels for valid data points, for others: select the 0th label
+            x2 = [[self.label_cache.get(item, self.label_cache[0]) for item in row] for row in x]
+            y  = [list(self.all_labels[item]) for item in x[-1,:]] #Not useful, only presetn for sake of placeholder
+
+            # get features for all data points
+            x1 = [[self.all_features[item] for item in row] for row in x]
+
+            start = stop
+            yield (x, x1, x2, seq[idx:idx+node_count], counts[idx:idx+node_count], y, lengths)

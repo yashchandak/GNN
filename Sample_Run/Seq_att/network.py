@@ -104,7 +104,8 @@ class Network(object):
         if self.config.data_sets.reduced_dims:
             with tf.variable_scope('Reduce_Dim') as scope:
                 W_ii = tf.get_variable('W_ii', [feature_size, self.config.data_sets.reduced_dims])
-                inputs = tf.reshape(tf.matmul(tf.reshape(inputs, [-1, feature_size]), W_ii), [max_len,-1,self.config.data_sets.reduced_dims])
+                W_iib = tf.get_variable('W_ii_bias', [self.config.data_sets.reduced_dims])
+                inputs = tf.reshape(tf.matmul(tf.reshape(inputs, [-1, feature_size]), W_ii) + W_iib, [max_len,-1,self.config.data_sets.reduced_dims])
                 scope.reuse_variables()
 
         # Split along time direction
@@ -180,10 +181,10 @@ class Network(object):
             s = tf.reshape(attn_features, [-1, attn_length]) # [Batch, Num_step, 1, 1] -> [Batch, Num_step]
             #a = s # [Batch, Num_step]
             #a = tf.nn.sigmoid(s) # [Batch, Num_step]
-            a = tf.nn.softmax(s) # [Batch, Num_step]
+            self.attn_vals = tf.nn.softmax(s) # [Batch, Num_step]
 
             # Calculate context c
-            c = tf.reduce_sum(tf.reshape(a, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
+            c = tf.reduce_sum(tf.reshape(self.attn_vals, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
             scope.reuse_variables()
 
         return c
@@ -211,10 +212,11 @@ class Network(object):
         s = tf.reduce_sum(attention_softmax_weights * tf.nn.tanh(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
         #a = s # [Batch, Num_step]
         #a = tf.nn.sigmoid(s) # [Batch, Num_step]
-        a = tf.nn.softmax(s) # [Batch, Num_step]
+        attn_val = tf.nn.softmax(s) # [Batch, Num_step]
+        self.attn_vals = attn_val
 
         # Calculate context c
-        c = tf.reduce_sum(tf.reshape(a, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
+        c = tf.reduce_sum(tf.reshape(attn_val, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
 
         return c
 
