@@ -56,10 +56,11 @@ class RNNLM_v1(object):
             attn_values, pred_labels = sess.run([self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
             #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
 
-            attn_values = np.sum(attn_values, axis=0)
-            depth_counts = np.sum(np.array(raw_inp).astype(np.bool), axis=1)
-            depth_sum += depth_counts
-            attn_sum += attn_values
+            if self.config.mRNN.attention:
+                attn_values = np.sum(attn_values, axis=0)
+                depth_counts = np.sum(np.array(raw_inp).astype(np.bool), axis=1)
+                depth_sum += depth_counts
+                attn_sum += attn_values
 
             start = 0
             for idx, count in enumerate(counts):
@@ -71,7 +72,11 @@ class RNNLM_v1(object):
                 start += count
 
         # Can't take the mean directly since all walks don't have nodes at all depths
-        self.attn_values = attn_sum / depth_sum
+        if self.config.mRNN.attention:
+            self.attn_values = attn_sum / depth_sum
+        else:
+            self.attn_values = 0
+
         print("Depth sums: ", depth_sum)
         print("Attention: ", self.attn_values)
 
@@ -412,13 +417,14 @@ def get_argumentparser():
     parser.add_argument("--lu", default=0.75, help="Label update rate", type=float)
     parser.add_argument("--l2", default=1e-3, help="L2 loss", type=float)
     parser.add_argument("--opt", default='adam', help="Optimizer type (adam, rmsprop, sgd)")
+    parser.add_argument("--cell", default='myLSTM', help="RNN cell (LSTM, myLSTM, GRU)")
     parser.add_argument("--reduce", default=32, help="Reduce Attribute dimensions to", type=int)
     parser.add_argument("--hidden", default=16, help="Hidden units", type=int)
+    parser.add_argument("--attention", default=1, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
     parser.add_argument("--drop_in", default=0.5, help="Dropout for input", type=float)
     parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer", type=float)
 
     parser.add_argument("--ssl", default=False, help="Semi-supervised loss", type=bool)
-    parser.add_argument("--attention", default=False, help="Attention mechanism", type=bool)
     parser.add_argument("--gating", default=False, help="RNN gating", type=bool)
     parser.add_argument("--boot_reset", default=False, help="Reset weights after bootstrap", type=bool)
     parser.add_argument("--inner_converge", default=False, help="Convergence during bootstrap", type=bool)
@@ -464,9 +470,9 @@ def main():
         print('\n\n ===================== \n\n')
 
         write_results(cfg, all_results)
-
-    np.save('attention', attention)
-    plotit(attention, 1, 'Depth', 'Values', 'Attention at Depth')
+        if cfg.mRNN.attention:
+            np.save('attention', attention)
+            plotit(attention, 1, 'Depth', 'Values', 'Attention at Depth',cfg)
 
 
 if __name__ == "__main__":

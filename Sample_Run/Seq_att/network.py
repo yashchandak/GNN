@@ -95,6 +95,34 @@ class Network(object):
 
                     return new_h, (new_c, new_h)
 
+        class RNN(RNNCell):
+            def __init__(self, num_units):
+                self.num_units = num_units
+
+            @property
+            def state_size(self):
+                return (self.num_units, self.num_units)
+
+            @property
+            def output_size(self):
+                return self.num_units
+
+            def __call__(self, x, state, scope=None):
+                with tf.variable_scope(scope or type(self).__name__):
+                    h = state
+
+                    # Keep W_xh and W_hh separate here as well to reuse initialization methods
+                    x_size = x.get_shape().as_list()[1]
+                    W_xh = tf.get_variable('W_xh',[x_size, self.num_units])
+                    W_hh = tf.get_variable('W_hh', [self.num_units, self.num_units])
+                    bias = tf.get_variable('bias', [self.num_units])
+
+                    hidden = tf.matmul(x, W_xh) + bias + tf.matmul(h, W_hh)
+                    new_h = tf.tanh(hidden)
+
+                    return new_h, (new_h)
+
+
         hidden_size = self.config.mRNN._hidden_size
         feature_size = self.config.data_sets._len_features
         label_size = self.config.data_sets._len_labels
@@ -117,6 +145,7 @@ class Network(object):
             #initState = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
             state = (tf.zeros([batch_size, self.config.mRNN._hidden_size]),
                      tf.zeros([batch_size, self.config.mRNN._hidden_size]))
+
         if keep_prob_in == None:
             keep_prob_in = 1
         if keep_prob_out == None:
@@ -129,9 +158,18 @@ class Network(object):
 	    inp_cat = [tf.concat(1, [inputs[tstep], inputs2[tstep]]) for tstep in range(len(inputs))]
 
         with tf.variable_scope('MyCell'):
-            #cell = tf.nn.rnn_cell.GRUCell(hidden_size)
-            #cell = tf.nn.rnn_cell.LSTMCell(hidden_size)
-            cell = MyLSTMCell(hidden_size)
+            if self.config.mRNN.cell == 'GRU':
+                cell_type = tf.nn.rnn_cell.GRUCell
+                state = state[0]
+            if self.config.mRNN.cell == 'RNN':
+                cell_type = RNN
+                state = state[0]
+            elif self.config.mRNN.cell == 'LSTM': cell_type = tf.nn.rnn_cell.LSTMCell
+            elif self.config.mRNN.cell == 'myLSTM': cell_type = MyLSTMCell
+            else: raise ValueError('Invalid Cell type')
+
+            cell = cell_type(hidden_size)
+            cell2 = cell_type(hidden_size)
             #cell = BNLSTMCell(hidden_size)
             #cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = keep_prob)
             #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=False)
@@ -141,27 +179,34 @@ class Network(object):
                 rnn_outputs = []
                 l = len(inp_cat)
                 d = max(0, l - self.config.max_depth) #clip maximum depth to be traversed
-                for tstep in range(d, l):
+                for tstep in range(d, l-1):
                     outs, state = cell.__call__(inp_cat[tstep], state=state)
                     rnn_outputs.append(outs)
                     scope.reuse_variables()
 
-                # How to pass state info for subsequent sentences
-                self.final_state = state
+            with tf.variable_scope('Loop2') as scope:
+                outs, state = cell2.__call__(inp_cat[tstep+1], state=state)
+                rnn_outputs.append(outs)
+                scope.reuse_variables()
+
+            self.final_state = state
 
         context = inputs[-1] #Treat the attribute of node-of-interest as context for attention
-        att_state = self.attention(rnn_outputs, context)
+        self.attn_vals = tf.constant(0)
+        if self.config.mRNN.attention == 0: att_state = self.final_state[0]
+        elif self.config.mRNN.attention == 1: att_state = self.attention1(rnn_outputs, context)
+        elif self.config.mRNN.attention == 2: att_state = self.attention2(rnn_outputs, context)
+        else: raise ValueError('Invlaid attention module')
 
         #outputs = tf.unpack(outputs,axis=0)
         with tf.variable_scope('RNNDropout'):
             self.variable_summaries(self.final_state, 'final_state') #summary wtiter throwing 'noneType' error otherwise
-            #rnn_outputs = tf.nn.dropout(self.final_state[0], keep_prob_out)
             rnn_outputs = tf.nn.dropout(att_state, keep_prob_out)
 
         return rnn_outputs
 
 
-    def attention(self, states, context, attn_size=None):
+    def attention1(self, states, context, attn_size=None):
         states = tf.pack(states) #convert from list to tensor
         states = tf.transpose(states, [1,0,2]) # [Num_step, Batch, state_size] -> [Batch, Num_step, state_size]
 
@@ -169,22 +214,21 @@ class Network(object):
         context_size = context.get_shape().as_list()[-1]
         attn_length = num_step #length of attention vector = Num_step
 
-        hidden = tf.reshape(states,[-1, attn_length, 1, state_size]) # [Batch, Num_step, 1, state_size]
+        hidden = tf.reshape(states,[-1, attn_length, 1, state_size]) # [Batch, Num_step, state_size] -> [Batch, Num_step, 1, state_size]
+        hiddenT = tf.transpose(hidden, [1,0,2,3])# [Num_step, Batch, 1, state_size]
 
         with tf.variable_scope('Attention') as scope:
             # filter
-            k = tf.get_variable("W_attention_softmax", [1, 1, state_size, context_size]) #[1, 1, state_size, context_size]
-            attn_features = tf.nn.conv2d(hidden, k, [1,1,1,1], "SAME") # [Batch, Num_step, 1, state_size] * [1, 1, state_size, context_size] = [Batch, Num_step, 1, context_size]
-
-            context = tf.reshape(context, [-1, 1, context_size, 1]) #[Batch, context_size] -> [Batch, 1, context_size, 1]
-            attn_features = tf.transpose(attn_features, [1,0,2,3]) #[Batch, Num_step, 1, context_size] -> [Num_step, Batch, 1, context_size]
-            attn_features = tf.nn.conv2d(attn_features, context, [1,1,1,1], "SAME") # [Num_step, Batch, 1, context_size] * [Batch, 1, context_size, 1] -> [Num_step, Batch, 1, 1]
-            attn_features = tf.transpose(attn_features, [1,0,2,3]) #[Num_step, Batch, 1, context_size] -> [Batch, Num_step, 1, context_size]
+            W = tf.get_variable("W_attention_softmax", [context_size, state_size]) #[context_size, state_size]
+            CxW = tf.matmul(context, W) #[Batch, context_size]*[context_size, state_size] -> [Batch, state_size]
+            CxW = tf.reshape(CxW, [-1, 1, state_size, 1]) #[Batch, 1, state_size, 1]
+            attn_features = tf.nn.conv2d(hiddenT, CxW, [1,1,1,1], "SAME") # [Num_step, Batch, 1, state_size] * [Batch, 1, state_size, 1] = [Num_step, Batch, 1, 1]
 
             # Calculating alpha
+            attn_features = tf.transpose(attn_features, [1,0,2,3]) # [Num_step, Batch, 1, 1] -> [Batch, Num_step, 1, 1]
             s = tf.reshape(attn_features, [-1, attn_length]) # [Batch, Num_step, 1, 1] -> [Batch, Num_step]
             #a = tf.nn.sigmoid(s) # [Batch, Num_step]
-            self.attn_vals = tf.nn.softmax(s + 1e-15) # [Batch, Num_step]
+            self.attn_vals = tf.nn.softmax(s) # [Batch, Num_step]
 
             # Calculate context c
             c = tf.reduce_sum(tf.reshape(self.attn_vals, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
@@ -216,8 +260,7 @@ class Network(object):
         #s = tf.reduce_sum(attention_softmax_weights * tf.nn.relu(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
         #a = s # [Batch, Num_step]
         #a = tf.nn.sigmoid(s) # [Batch, Num_step]
-        attn_val = tf.nn.softmax(s + 1e-15) # [Batch, Num_step]
-        self.attn_vals = attn_val
+        self.attn_vals = tf.nn.softmax(s) # [Batch, Num_step]
 
         # Calculate context c
         c = tf.reduce_sum(tf.reshape(self.attn_vals, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]

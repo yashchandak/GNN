@@ -72,6 +72,8 @@ class Config(object):
                 self._hidden_size = args.hidden
                 self._keep_prob_in = 1 - args.drop_in
                 self._keep_prob_out = 1 - args.drop_out
+                self.cell = args.cell
+                self.attention = args.attention
 
         self.solver = Solver(args)
         self.data_sets = Data_sets(args)

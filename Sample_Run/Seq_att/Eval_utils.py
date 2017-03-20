@@ -2,16 +2,16 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def plotit(y, fig, xlabel, ylabel, title):
+def plotit(y, fig, xlabel, ylabel, title, cfg):
     x = np.arange(len(y.values()[0]))
     for k,v in y.items():
         plt.figure(fig)
-        plt.plot(x, v)
+        plt.plot(x, np.flipud(v))
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
 
-    plt.savefig(title+'.png')
+    plt.savefig(cfg.results_folder+title+'.png')
 
   
 def write_results(cfg, all_results):
