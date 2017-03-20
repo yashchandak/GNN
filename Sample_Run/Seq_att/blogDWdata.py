@@ -45,7 +45,7 @@ class DataSet(object):
         #Aggregates all the labels for the corresponding nodes
         #and tracks the count of updates made
         default = (self.all_labels[0], 0) #Initial estimate -> all_zeros
-        labels = labels[0]
+        #WTF!labels = labels[0]
         
         if self.cfg.data_sets.binary_label_updates:
             #Convert to binary and keep only the maximum value as 1
@@ -117,7 +117,7 @@ class DataSet(object):
             x = np.swapaxes(x, 0, 1) # convert from (batch x step) to (step x batch)
 
             # get labels for valid data points, for others: select the 0th label
-            x2 = [[self.label_cache.get(item, self.label_cache[0]) for item in row] for row in x]
+            x2 = [[self.label_cache.get(item, list(self.all_labels[0])) for item in row] for row in x]
             y  = [list(self.all_labels[item]) for item in x[-1]]
 
             # get features for all data points
@@ -157,7 +157,7 @@ class DataSet(object):
             x = np.swapaxes(x, 0, 1) # convert from (batch x step) to (step x batch)
 
             # get labels for valid data points, for others: select the 0th label
-            x2 = [[self.label_cache.get(item, self.label_cache[0]) for item in row] for row in x]
+            x2 = [[self.label_cache.get(item, list(self.all_labels[0])) for item in row] for row in x]
             y  = [list(self.all_labels[item]) for item in x[-1,:]] #Not useful, only presetn for sake of placeholder
 
             # get features for all data points

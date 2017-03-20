@@ -31,9 +31,9 @@ class Config():
 
         self.metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
                         'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss','cross_entropy', 'accuracy']
-        self.training_percents = [2]
+        self.training_percents = [25]
         self.threshold = False
-        self.num_shuffles = [4]
+        self.num_shuffles = [1,2,3,4,5]
 	
         self.init2()
 

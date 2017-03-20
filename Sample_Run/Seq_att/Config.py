@@ -33,9 +33,9 @@ class Config(object):
         self.max_inner_epochs = args.max_inner
         self.boot_epochs = args.boot_epochs
         # Validation frequence
-        self.val_epochs_freq = 1
+        self.val_epochs_freq = args.val_freq #1
         # Model save frequency
-        self.save_epochs_after = 0
+        self.save_epochs_after = args.save_after #0
 
         # earlystopping hyperparametrs
         self.patience = args.pat  # look as this many epochs regardless

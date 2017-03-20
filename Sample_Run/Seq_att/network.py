@@ -106,6 +106,7 @@ class Network(object):
                 W_ii = tf.get_variable('W_ii', [feature_size, self.config.data_sets.reduced_dims])
                 W_iib = tf.get_variable('W_ii_bias', [self.config.data_sets.reduced_dims])
                 inputs = tf.reshape(tf.matmul(tf.reshape(inputs, [-1, feature_size]), W_ii) + W_iib, [max_len,-1,self.config.data_sets.reduced_dims])
+                #inputs = tf.reshape(tf.matmul(tf.reshape(inputs, [-1, feature_size]), W_ii), [max_len,-1,self.config.data_sets.reduced_dims])
                 scope.reuse_variables()
 
         # Split along time direction
@@ -160,7 +161,7 @@ class Network(object):
         return rnn_outputs
 
 
-    def attention2(self, states, context, attn_size=None):
+    def attention(self, states, context, attn_size=None):
         states = tf.pack(states) #convert from list to tensor
         states = tf.transpose(states, [1,0,2]) # [Num_step, Batch, state_size] -> [Batch, Num_step, state_size]
 
@@ -172,16 +173,18 @@ class Network(object):
 
         with tf.variable_scope('Attention') as scope:
             # filter
-            score_weight = tf.get_variable("W_attention_softmax", [context_size, state_size]) #[context_size, state_size]
-            k = tf.matmul(context, score_weight) #[Batch, Context_size] * [context_size, state_size] -> [Batch, state_size]
-            k = tf.reshape(k, [-1, 1, state_size, 1])  # Reshape into 4D: [Batch, 1, state_size, 1]
-            attn_features = tf.nn.conv2d(hidden, k, [1,1,1,1], "SAME") # [Batch, Num_step, 1, state_size] * [1, 1, state_size, 1] = [Batch, Num_step, 1, 1]
+            k = tf.get_variable("W_attention_softmax", [1, 1, state_size, context_size]) #[1, 1, state_size, context_size]
+            attn_features = tf.nn.conv2d(hidden, k, [1,1,1,1], "SAME") # [Batch, Num_step, 1, state_size] * [1, 1, state_size, context_size] = [Batch, Num_step, 1, context_size]
+
+            context = tf.reshape(context, [-1, 1, context_size, 1]) #[Batch, context_size] -> [Batch, 1, context_size, 1]
+            attn_features = tf.transpose(attn_features, [1,0,2,3]) #[Batch, Num_step, 1, context_size] -> [Num_step, Batch, 1, context_size]
+            attn_features = tf.nn.conv2d(attn_features, context, [1,1,1,1], "SAME") # [Num_step, Batch, 1, context_size] * [Batch, 1, context_size, 1] -> [Num_step, Batch, 1, 1]
+            attn_features = tf.transpose(attn_features, [1,0,2,3]) #[Num_step, Batch, 1, context_size] -> [Batch, Num_step, 1, context_size]
 
             # Calculating alpha
             s = tf.reshape(attn_features, [-1, attn_length]) # [Batch, Num_step, 1, 1] -> [Batch, Num_step]
-            #a = s # [Batch, Num_step]
             #a = tf.nn.sigmoid(s) # [Batch, Num_step]
-            self.attn_vals = tf.nn.softmax(s) # [Batch, Num_step]
+            self.attn_vals = tf.nn.softmax(s + 1e-15) # [Batch, Num_step]
 
             # Calculate context c
             c = tf.reduce_sum(tf.reshape(self.attn_vals, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
@@ -189,7 +192,7 @@ class Network(object):
 
         return c
 
-    def attention(self, states, context, attn_size=None):
+    def attention2(self, states, context, attn_size=None):
         states = tf.pack(states) #convert from list to tensor
         states = tf.transpose(states, [1,0,2]) # [Num_step, Batch, state_size] -> [Batch, Num_step, state_size]
 
@@ -204,19 +207,20 @@ class Network(object):
         attn_features = tf.nn.conv2d(hidden, k, [1,1,1,1], "SAME") # [Batch, Num_step, 1, state_size] * [1, 1, state_size, A] = [Batch, Num_step, 1, A]
         attention_softmax_weights = tf.get_variable("W_attention_softmax", [attn_size]) # [A]
 
+        #y = tf.nn.rnn_cell._linear(args = context, output_size = attn_size, bias = False) # W*C + b : [Batch, context_size] -> [Batch, A]
         y = tf.nn.rnn_cell._linear(args = context, output_size = attn_size, bias = True) # W*C + b : [Batch, context_size] -> [Batch, A]
         y = tf.reshape(y, [-1, 1, 1, attn_size])  # Reshape into 4D: [Batch, 1, 1, A]
 
         # Calculating alpha
-        #s = tf.reduce_sum(attention_softmax_weights * tf.nn.tanh(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
         s = tf.reduce_sum(attention_softmax_weights * tf.nn.tanh(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
+        #s = tf.reduce_sum(attention_softmax_weights * tf.nn.relu(attn_features + y), [2, 3]) # [A]*[Batch, Num_step, 1, A] -> [Batch, Num_step]
         #a = s # [Batch, Num_step]
         #a = tf.nn.sigmoid(s) # [Batch, Num_step]
-        attn_val = tf.nn.softmax(s) # [Batch, Num_step]
+        attn_val = tf.nn.softmax(s + 1e-15) # [Batch, Num_step]
         self.attn_vals = attn_val
 
         # Calculate context c
-        c = tf.reduce_sum(tf.reshape(attn_val, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
+        c = tf.reduce_sum(tf.reshape(self.attn_vals, [-1, attn_length, 1, 1]) * hidden, [1, 2]) #[Batch, Num_step, 1, 1]* [Batch, Num_step, 1, state_size] -> [Batch, state_size]
 
         return c
 

@@ -41,20 +41,21 @@ class RNNLM_v1(object):
         self.step_incr_op = self.arch.global_step.assign(self.arch.global_step + 1)
         self.init         = tf.global_variables_initializer()
 
-    def bootstrap2(self, sess, data, label_in):
+    def bootstrap(self, sess, data, label_in):
         alpha = self.config.solver.label_update_rate
         if len(self.dataset.label_cache.items()) <= 1: alpha =1.0 #First update
         depth_sum, attn_sum = 0, 0
 
+        update_cache = {}
         for step, (raw_inp, input_batch, input_batch2, seq, counts, label_batch, lengths) in enumerate(
                 self.dataset.next_batch_same(data, node_count = 10)):
             #TODO: Can ignore label batch creation to save time
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
-            #feed_dict[self.inp_lengths] = lengths
-            # feed_dict[self.arch.initial_state] = state
             attn_values, pred_labels = sess.run([self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
+            #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
+
             attn_values = np.sum(attn_values, axis=0)
             depth_counts = np.sum(np.array(raw_inp).astype(np.bool), axis=1)
             depth_sum += depth_counts
@@ -62,29 +63,35 @@ class RNNLM_v1(object):
 
             start = 0
             for idx, count in enumerate(counts):
-                new = np.mean(pred_labels[0][start:start+count], axis=0)
-                old = np.array(self.dataset.label_cache.get(seq[idx], self.dataset.label_cache[0]))
+                new = np.mean(pred_labels[start:start+count], axis=0)
+                old = np.array(self.dataset.label_cache.get(seq[idx], list(self.dataset.all_labels[0])))
                 updated = (1-alpha)*old + alpha*new
                 self.change += np.mean((updated - old) ** 2)
-                self.dataset.label_cache[seq[idx]] = list(updated)
+                update_cache[seq[idx]] = list(updated) #store all the updates in temporary dict
                 start += count
-
 
         # Can't take the mean directly since all walks don't have nodes at all depths
         self.attn_values = attn_sum / depth_sum
+        print("Depth sums: ", depth_sum)
+        print("Attention: ", self.attn_values)
 
         print("\nChange in label: :", np.sqrt(self.change/self.config.data_sets._len_vocab)*100)
         self.change = 0
 
+        #Assign the predicted labels to label_cache
+        self.dataset.label_cache = update_cache
 
-    def bootstrap(self, sess, data, label_in):
+
+    def bootstrap2(self, sess, data, label_in):
         for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
                 self.dataset.next_batch(data, batch_size=512, shuffle=False)):
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
             # feed_dict[self.arch.initial_state] = state
-            pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
+            #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
+            attn_values, pred_labels = sess.run([self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
+            print(attn_values.shape, pred_labels.shape)
             self.dataset.accumulate_label_cache(pred_labels, seq)
 
             #print('%d/%d'%(step,tot), end="\r")
@@ -261,7 +268,7 @@ class RNNLM_v1(object):
         learning_rate = self.config.solver.learning_rate
         label_in = None  # Ignore the label inputs during bootstrap | first run
         # sess.run(self.init) #DO NOT DO THIS!! Doesn't restart from checkpoint
-        while (step <= max_epochs) or (not done_looping):
+        while (step <= max_epochs) and (not done_looping):
 
             # sess.run([self.step_incr_op])
             epoch = step  # self.arch.global_step.eval(session=sess)
@@ -342,9 +349,10 @@ class RNNLM_v1(object):
 
         self.bootstrap(sess, data='all', label_in=label_in)  # Get new estimates of unlabeled nodes
         metrics = self.predict_results(sess, data='test')
+
         self.print_metrics(metrics)  # Get predictions for test nodes
 
-        return metrics
+        return metrics, self.attn_values
 
 
 ########END OF CLASS MODEL#####################################
@@ -375,8 +383,8 @@ def train_DNNModel(cfg):
         model, sess = init_Model(config)
         with sess:
             model.add_summaries(sess)
-            metrics = model.fit_outer(sess)
-            return metrics, 0
+            metrics, attn_values = model.fit_outer(sess)
+            return metrics, attn_values
 
 def get_argumentparser():
     parser = argparse.ArgumentParser()
@@ -387,24 +395,33 @@ def get_argumentparser():
     parser.add_argument("--folds", default='1_2_3_4_5', help="Training folds")
     parser.add_argument("--retrain", default=True, help="Retrain flag")
     parser.add_argument("--debug", default=False, help="Debug flag")
-    parser.add_argument("--batch_size", default=32, help="Batch size", type=int)
+    parser.add_argument("--save_after", default=0, help="Debug flag", type=int)
+    parser.add_argument("--val_freq", default=1, help="Debug flag", type=int)
+    parser.add_argument("--bin_upd", default=False, help="Binary updates for labels", type=bool)
     parser.add_argument("--max_depth", default=999, help="Maximum path depth", type=int)
     parser.add_argument("--max_outer", default=100, help="Maximum outer epoch", type=int)
-    parser.add_argument("--boot_epochs", default=4, help="Epochs for first bootstrap", type=int)
-    parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
     parser.add_argument("--pat", default=3, help="Patience", type=int)
     parser.add_argument("--pat_inc", default=2, help="Patience Increase", type=int)
+    parser.add_argument("--folder_suffix", default='', help="folder name suffix")
+
+    parser.add_argument("--batch_size", default=32, help="Batch size", type=int)
+    parser.add_argument("--boot_epochs", default=4, help="Epochs for first bootstrap", type=int)
+    parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
     parser.add_argument("--pat_improve", default=0.9999, help="Improvement threshold for patience", type=float)
     parser.add_argument("--lr", default=0.001, help="Learning rate", type=float)
     parser.add_argument("--lu", default=0.75, help="Label update rate", type=float)
     parser.add_argument("--l2", default=1e-3, help="L2 loss", type=float)
     parser.add_argument("--opt", default='adam', help="Optimizer type (adam, rmsprop, sgd)")
     parser.add_argument("--reduce", default=32, help="Reduce Attribute dimensions to", type=int)
-    parser.add_argument("--bin_upd", default=False, help="Binary updates for labels")
     parser.add_argument("--hidden", default=16, help="Hidden units", type=int)
     parser.add_argument("--drop_in", default=0.5, help="Dropout for input", type=float)
     parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer", type=float)
-    parser.add_argument("--folder_suffix", default='', help="folder name suffix")
+
+    parser.add_argument("--ssl", default=False, help="Semi-supervised loss", type=bool)
+    parser.add_argument("--attention", default=False, help="Attention mechanism", type=bool)
+    parser.add_argument("--gating", default=False, help="RNN gating", type=bool)
+    parser.add_argument("--boot_reset", default=False, help="Reset weights after bootstrap", type=bool)
+    parser.add_argument("--inner_converge", default=False, help="Convergence during bootstrap", type=bool)
 
     return parser
 
