@@ -6,12 +6,14 @@ def plotit(y, fig, xlabel, ylabel, title, cfg):
     x = np.arange(len(y.values()[0]))
     for k,v in y.items():
         plt.figure(fig)
+        v = [0 if item == np.inf or item == np.nan else item for item in v ]
         plt.plot(x, np.flipud(v))
     plt.xlabel(xlabel)
     plt.ylabel(ylabel)
     plt.title(title)
 
     plt.savefig(cfg.results_folder+title+'.png')
+    np.save(cfg.results_folder+title, y)
 
   
 def write_results(cfg, all_results):

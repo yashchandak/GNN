@@ -57,8 +57,9 @@ class RNNLM_v1(object):
             #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
 
             if self.config.mRNN.attention:
-                attn_values = np.sum(attn_values, axis=0)
-                depth_counts = np.sum(np.array(raw_inp).astype(np.bool), axis=1)
+                raw_inp = np.array(raw_inp).astype(np.bool)
+                attn_values = np.sum(attn_values.T*raw_inp, axis=1) #[Batch, num_Step]
+                depth_counts = np.sum(raw_inp, axis=1) #[num_Step, Batch]
                 depth_sum += depth_counts
                 attn_sum += attn_values
 
@@ -396,7 +397,7 @@ def get_argumentparser():
     parser.add_argument("--path", default='/home/priyesh/Desktop/Codes/Sample_Run/', help="Base path for the code")
     parser.add_argument("--project", default='Seq_att', help="Project folder")
     parser.add_argument("--dataset", default='cora', help="Dataset to evluate")
-    parser.add_argument("--percent", default=4, help="Training percent")
+    parser.add_argument("--percent", default=20, help="Training percent")
     parser.add_argument("--folds", default='1_2_3_4_5', help="Training folds")
     parser.add_argument("--retrain", default=True, help="Retrain flag")
     parser.add_argument("--debug", default=False, help="Debug flag")
@@ -420,7 +421,7 @@ def get_argumentparser():
     parser.add_argument("--cell", default='myLSTM', help="RNN cell (LSTM, myLSTM, GRU)")
     parser.add_argument("--reduce", default=32, help="Reduce Attribute dimensions to", type=int)
     parser.add_argument("--hidden", default=16, help="Hidden units", type=int)
-    parser.add_argument("--attention", default=1, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
+    parser.add_argument("--attention", default=2, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
     parser.add_argument("--drop_in", default=0.5, help="Dropout for input", type=float)
     parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer", type=float)
 
@@ -471,7 +472,6 @@ def main():
 
         write_results(cfg, all_results)
         if cfg.mRNN.attention:
-            np.save('attention', attention)
             plotit(attention, 1, 'Depth', 'Values', 'Attention at Depth',cfg)
 
 
