@@ -70,15 +70,21 @@ class DataSet(object):
         self.train_nodes = np.concatenate(([False], np.load(cfg.label_fold_dir + 'train_ids.npy')))
         self.val_nodes   = np.concatenate(([False], np.load(cfg.label_fold_dir + 'val_ids.npy')))
         self.test_nodes  = np.concatenate(([False], np.load(cfg.label_fold_dir + 'test_ids.npy')))
-        # [!!!IMP!!]Assert no overlap between test/val/train nodes
+        # [IMP]Assert no overlap between test/val/train nodes
 
         self.change = 0
         self.label_cache, self.update_cache = {0:self.all_labels[0]}, {}
-        #self.label_cache = defaultdict(lambda:self.all_labels[0], self.label_cache)
 
-        self.adj         = loadmat(cfg.adj_dir)['adjmat'].toarray()
+        self.adj         = self.get_adj(cfg.adj_dir)
         self.wce         = self.get_wce()
 
+    def get_adj(self, path):
+        adj = loadmat(path)['adjmat'].toarray()
+        # Add dummy '0' nodes
+        temp = np.zeros((adj.shape[0] + 1, adj.shape[0] + 1), dtype=int)
+        temp[1:, 1:] = adj
+        #print('adj: ', np.sum(temp, 0), '\n', np.shape(adj), np.shape(temp))
+        return temp
 
     def get_walks(self, path):
         #Reverse sequences and padding in beginning
@@ -174,62 +180,62 @@ class DataSet(object):
 
         return nodes
 
-    """
     def next_batch(self, dataset, batch_size, shuffle=True):
 
-        nodes = self.get_nodes(dataset)
-        label_len = np.shape(self.all_labels)[1]
+        nodes = np.where(self.get_nodes(dataset))[0]
 
-        # Get position of all walks ending with desired set of nodes
-        buckets = 5
-        tot_neigh = np.sum(self.adj, 0)
-        idxs = np.arange(self.adj.shape[0])
-        count = zip(idxs, tot_neigh)
+        # Divide the nodes into buckets based on their number of neighbors
+        buckets = 3
+        tot_neigh = np.sum(self.adj[nodes], 1)  #get neighbors of the nodes and compute individual sums
+        count = zip(nodes, tot_neigh) #zip nodes with their neighbor count
         count = sorted(count, key = lambda item:item[1])
-
-        buck_size = self.adj.shape[0]/buckets
+        count = np.array(count)
+        buck_size = len(nodes)//buckets
         grouped = {}
-        for i in range(buckets):
-            temp = []
-            for item in count[i*buck_size: (i+1)*buck_size]:
-                temp.append(item)
-            grouped[i] = temp
+        for i in range(buckets+1):
+            extra = max(0, (i+1)*buck_size - len(nodes)) #Increase the size of last bucket to accomodate left-over nodes
+            temp = count[i*buck_size: (i+1)*buck_size + extra]
+            maxi = np.max(temp[:,1])
+            grouped[i] = [temp, maxi] #format -> ([..[node, neighbor_count]..], max_neighbor_count)
 
-        #Increase the size of last bucket to accomodate left-over nodes
-        temp = []
-        for item in count[(i + 1) * buck_size: self.adj.shape[0]]:
-            temp.append(item)
-        grouped[i].extend(temp)
-
-
-
-        pos = []
-        for node in np.where(nodes)[0]:
-            pos.extend(np.where(self.node_seq == node)[0])
-
-        pos = np.array(pos)
         if shuffle:
-            indices = np.random.permutation(len(pos))
-            pos = pos[indices]
+            for k,v in grouped.items():
+                indices = np.random.permutation(len(v[0]))
+                grouped[k] = [v[0][indices], v[1]]
 
-        if batch_size == -1:
-            batch_size = len(pos)
+        tot = np.ceil(buck_size*1.0/batch_size)*buckets #Total number of batches
+        for vertices, maxi in grouped.values():
+            print("Vertices; ",np.shape(vertices))
+            maxi += 1 #number of neighbors + itself
+            for idx in range(0, len(vertices), batch_size):
+                lengths = []
+                #additional dummy entries in the batch to make batch size constant
+                dummy = max(0, (idx + batch_size) -len(vertices))
 
-        tot = len(pos)//batch_size
-        for i in range(0, len(pos), batch_size):
-            x = self.all_walks[pos[i: i + batch_size]]
-            x = np.swapaxes(x, 0, 1) # convert from (batch x step) to (step x batch)
+                mask = [1]*batch_size
+                mask[-dummy:] = [0]*dummy
 
-            # get labels for valid data points, for others: select the 0th label
-            x2 = [[self.label_cache.get(item, self.all_labels[0]) for item in row] for row in x]
-            y  = [self.all_labels[item] for item in x[-1]]
+                seq = vertices[idx: idx + batch_size - dummy, 0]
+                seq = np.concatenate((seq, [0]*dummy))
+                #print("Seq: ",np.shape(seq))
+                x = []
+                for n in seq:
+                    x_ = list(np.where(self.adj[n])[0])
+                    x_.append(n) #append itself to the set of neighbors
+                    lengths.append(len(x_))
+                    pad = maxi - len(x_) #padding for each sequence
+                    x_.extend([0]*pad)
+                    #print(list(np.where(self.adj[n])[0]), x_)
+                    x.append(x_)
 
-            # get features for all data points
-            x = [[self.all_features[item] for item in row] for row in x]
+                #print("Shape for this batch: ",np.shape(x))
+                x = np.swapaxes(x, 0, 1) #convert from (batch x step) to (step x batch)
 
-            seq = self.node_seq[pos[i: i + batch_size]]
+                x_labels = [[self.label_cache.get(item, self.all_labels[0]) for item in row] for row in x]
+                x_feats = [[self.all_features[item] for item in row] for row in x]
+                y = [self.all_labels[item] for item in seq]
 
-            yield (x, x2, seq, y, tot)
+                yield (x_feats, x_labels, seq, y, tot, lengths, mask)
 
     """
     @async_prefetch
@@ -278,7 +284,7 @@ class DataSet(object):
             #print(x,y, lengths, seq[i: i + batch_size])
             yield (x1, x2, seq[i: i + batch_size], y, tot, lengths)
 
-
+"""
     @async_prefetch
     def next_batch_same(self, dataset, node_count=1):
 

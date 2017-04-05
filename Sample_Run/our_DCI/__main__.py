@@ -35,7 +35,7 @@ class RNNLM_v1(object):
         self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2,
                                              self.keep_prob_in, self.keep_prob_out,self.label_in, self.inp_lengths)
         self.outputs     = self.arch.projection(self.rnn_outputs)
-        self.loss        = self.arch.loss(self.outputs, self.label_placeholder, self.wce_placeholder)
+        self.loss        = self.arch.loss(self.outputs, self.label_placeholder, self.wce_placeholder, self.mask)
         self.optimizer   = self.config.solver._optimizer
         self.train       = self.arch.training(self.loss, self.optimizer)
 
@@ -44,7 +44,7 @@ class RNNLM_v1(object):
         self.step_incr_op = self.arch.global_step.assign(self.arch.global_step + 1)
         self.init         = tf.global_variables_initializer()
 
-    def bootstrap(self, sess, data, label_in):
+    def bootstrap2(self, sess, data, label_in):
         alpha = self.config.solver.label_update_rate
         if len(self.dataset.label_cache.items()) <= 1: alpha =1.0 #First update
         depth_sum, attn_sum = 0, 0
@@ -104,9 +104,9 @@ class RNNLM_v1(object):
         self.dataset.label_cache = update_cache
 
 
-    def bootstrap2(self, sess, data, label_in):
-        for step, (input_batch, input_batch2, seq, label_batch, tot, lengths) in enumerate(
-                self.dataset.next_batch(data, batch_size=512, shuffle=False)):
+    def bootstrap(self, sess, data, label_in):
+        for step, (input_batch, input_batch2, seq, label_batch, tot, lengths, mask) in enumerate(
+                self.dataset.next_batch(data, batch_size=self.config.batch_size, shuffle=False)):
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
@@ -163,20 +163,21 @@ class RNNLM_v1(object):
 
     def add_placeholders(self):
         self.data_placeholder = tf.placeholder(tf.float32,
-                                               shape=[self.config.num_steps, None, self.config.data_sets._len_features],
-                                               #shape=[None, self.config.batch_size, self.config.data_sets._len_features],
+                                               #shape=[self.config.num_steps, None, self.config.data_sets._len_features],
+                                               shape=[None, self.config.batch_size, self.config.data_sets._len_features],
                                                name='Input')
         self.data_placeholder2 = tf.placeholder(tf.float32,
-                                                shape=[self.config.num_steps, None, self.config.data_sets._len_labels],
-                                                #shape=[None, self.config.batch_size, self.config.data_sets._len_labels],
+                                                #shape=[self.config.num_steps, None, self.config.data_sets._len_labels],
+                                                shape=[None, self.config.batch_size, self.config.data_sets._len_labels],
                                                 name='label_inputs')
-        self.label_placeholder = tf.placeholder(tf.float32, shape=[None, self.config.data_sets._len_labels],
+        self.label_placeholder = tf.placeholder(tf.float32, shape=[self.config.batch_size, self.config.data_sets._len_labels],
                                                 name='Target')
         self.keep_prob_in = tf.placeholder(tf.float32, name='keep_prob_in')
         self.keep_prob_out = tf.placeholder(tf.float32, name='keep_prob_out')
         self.label_in = tf.placeholder(tf.bool, name='label_input_condition')
         self.wce_placeholder = tf.placeholder(tf.float32, shape=[self.config.data_sets._len_labels], name='Cross_entropy_weights')
-        self.inp_lengths = tf.placeholder(tf.int32, shape=[None], name='input_lengths')
+        self.inp_lengths = tf.placeholder(tf.int32, shape=[self.config.batch_size], name='input_lengths')
+        self.mask = tf.placeholder(tf.float32, shape=[self.config.batch_size], name='Mask_for_dummy_entries')
 
     def create_feed_dict(self, input_batch, input_batch2, label_batch, label_in):
         feed_dict = {
@@ -226,7 +227,7 @@ class RNNLM_v1(object):
         gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy = [],[], [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
-        for step, (input_batch, input_batch2, seq, label_batch, tot, lengths) in enumerate(
+        for step, (input_batch, input_batch2, seq, label_batch, tot, lengths, mask) in enumerate(
                 self.dataset.next_batch(data, self.config.batch_size, shuffle=True)):
 
             # print("\n\n\nActualLabelCount: ", np.shape(input_batch), np.shape(input_batch2), np.shape(label_batch), np.shape(seq))
@@ -234,6 +235,7 @@ class RNNLM_v1(object):
             feed_dict[self.keep_prob_in] = keep_prob_in
             feed_dict[self.keep_prob_out] = keep_prob_out
             feed_dict[self.wce_placeholder] = self.dataset.wce
+            feed_dict[self.mask] = mask
             feed_dict[self.inp_lengths] = lengths
             # feed_dict[self.arch.initial_state] = state
 
@@ -279,7 +281,7 @@ class RNNLM_v1(object):
                                                                            train_op=self.train,
                                                                            summary_writer=self.summary_writer_train)
             if inc > 1:
-                print(tr_micro, tr_macro, tr_accuracy)
+                print("Tr_micro: %f :: Tr_macro: %f :: Tr_accuracy: %f "%(tr_micro, tr_macro, tr_accuracy))
         # return last evaluated loasses
         return average_loss, tr_micro, tr_macro, tr_accuracy
 
@@ -436,7 +438,7 @@ def get_argumentparser():
     parser.add_argument("--pat_inc", default=2, help="Patience Increase", type=int)
     parser.add_argument("--folder_suffix", default='', help="folder name suffix")
 
-    parser.add_argument("--batch_size", default=100, help="Batch size", type=int)
+    parser.add_argument("--batch_size", default=50, help="Batch size", type=int)
     parser.add_argument("--boot_epochs", default=1, help="Epochs for first bootstrap", type=int)
     parser.add_argument("--boot_reset", default=True, help="Reset weights after first bootstrap", type=bool)
     parser.add_argument("--concat", default=False, help="Concat attribute to hidden state", type=bool)

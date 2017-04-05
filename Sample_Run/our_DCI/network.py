@@ -71,8 +71,8 @@ class Network(object):
                 scope.reuse_variables()
 
         # Split along time direction
-        inputs = tf.unstack(inputs, axis=0)
-        inputs2 = tf.unstack(inputs2, axis=0)
+        #inputs = tf.unstack(inputs, axis=0)
+        #inputs2 = tf.unstack(inputs2, axis=0)
 
         if state == None:
             #initState = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
@@ -85,12 +85,12 @@ class Network(object):
             keep_prob_out = 1
 
         with tf.variable_scope('InputDropout'):
-            #\inputs = [tf.nn.dropout(x,keep_prob_in) for x in inputs]
-            #inputs = tf.nn.dropout(inputs,keep_prob_in)
+            #inputs = [tf.nn.dropout(x,keep_prob_in) for x in inputs]
+            inputs = tf.nn.dropout(inputs,keep_prob_in)
 
-	    #inp_cat = tf.concat(2, inputs, inputs2)
+	    inp_cat = tf.concat(2, [inputs, inputs2])
 	    #inp_cat = tf.unstack(inp_cat, axis=0)
-	    inp_cat = tf.pack([tf.concat(1, [inputs[tstep], inputs2[tstep]]) for tstep in range(len(inputs))])
+	    #inp_cat = tf.pack([tf.concat(1, [inputs[tstep], inputs2[tstep]]) for tstep in range(len(inputs))])
 	    #inp_cat = [tf.concat(1, [inputs[tstep], inputs2[tstep]]) for tstep in range(len(inputs))]
 
         with tf.variable_scope('MyCell'):
@@ -221,7 +221,7 @@ class Network(object):
 
 
 
-    def loss(self, predictions, labels, wce):
+    def loss(self, predictions, labels, wce, mask):
         """
          Args: predictions: (batch_size, len_labels)
                labels: (batch_size, len_labels).
@@ -238,11 +238,12 @@ class Network(object):
                 # binary cross entropy for labels
                 cross_loss = tf.add(tf.log(1e-10 + self.label_preds)*labels,
                                    tf.log(1e-10 + (1-self.label_preds))*(1-labels))
-                cross_entropy_label = -1*tf.reduce_mean(tf.reduce_sum(wce*cross_loss,1))
+                cross_entropy_label = -1*tf.reduce_sum(mask*tf.reduce_sum(wce*cross_loss,1))/tf.reduce_sum(mask)
 
             else:
                 self.label_preds = tf.nn.softmax(predictions)
-                cross_entropy_label = tf.reduce_mean(-tf.reduce_sum(wce*labels * tf.log(self.label_preds + 1e-10), 1))
+                cross_loss = tf.log(self.label_preds + 1e-10)
+                cross_entropy_label = -1*tf.reduce_sum(mask*tf.reduce_sum(wce*labels*cross_loss,1))/tf.reduce_sum(mask)
 
             tf.add_to_collection('total_loss', cross_entropy_label)
 
