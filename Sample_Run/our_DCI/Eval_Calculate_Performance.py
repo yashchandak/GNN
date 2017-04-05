@@ -93,7 +93,7 @@ def evaluate(predictions, labels, threshold):
       predictions = np.reshape(predictions,(shape[0]*shape[1], shape[2]))
       labels      = np.reshape(labels, (shape[0]*shape[1], shape[2]))
 
-  assert predictions.shape == labels.shape
+  assert predictions.shape == labels.shape, "Shapes: %s, %s"%(predictions.shape, labels.shape,)
 
   accuracy = accuracy_score(np.argmax(labels, axis=1), np.argmax(predictions, axis=1))
   cross_entropy = -np.mean(labels*np.log(predictions+.0000000001))

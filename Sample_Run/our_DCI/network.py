@@ -43,7 +43,7 @@ class Network(object):
 
         return outputs
 
-    def predict(self, inputs, inputs2, keep_prob_in, keep_prob_out, label_in, x_lengths, state=None):
+    def predict(self, inputs, inputs2, keep_prob_in, keep_prob_out, x_lengths, state=None):
         # Non-Dynamic Unidirectional RNN
         """
         Args: inputs: (num_steps, batch_size, len_features).

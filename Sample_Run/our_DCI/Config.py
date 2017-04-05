@@ -35,8 +35,6 @@ class Config(object):
         self.boot_reset = args.boot_reset
         # Validation frequence
         self.val_epochs_freq = args.val_freq #1
-        # Model save frequency
-        self.save_epochs_after = args.save_after #0
 
         # earlystopping hyperparametrs
         self.patience = args.pat  # look as this many epochs regardless

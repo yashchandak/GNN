@@ -128,6 +128,11 @@ class DataSet(object):
 
         return all_labels
 
+    def get_update_cache(self):
+        updated = {}
+        for k,v in self.update_cache.items():
+            updated[k] = v[0]/v[1]
+        return updated
 
     def accumulate_label_cache(self, labels, nodes):
         #Aggregates all the labels for the corresponding nodes
@@ -180,6 +185,7 @@ class DataSet(object):
 
         return nodes
 
+    @async_prefetch
     def next_batch(self, dataset, batch_size, shuffle=True):
 
         nodes = np.where(self.get_nodes(dataset))[0]
@@ -205,7 +211,7 @@ class DataSet(object):
 
         tot = np.ceil(buck_size*1.0/batch_size)*buckets #Total number of batches
         for vertices, maxi in grouped.values():
-            print("Vertices; ",np.shape(vertices))
+            #print("Vertices; ",vertices)
             maxi += 1 #number of neighbors + itself
             for idx in range(0, len(vertices), batch_size):
                 lengths = []
@@ -216,11 +222,12 @@ class DataSet(object):
                 mask[-dummy:] = [0]*dummy
 
                 seq = vertices[idx: idx + batch_size - dummy, 0]
-                seq = np.concatenate((seq, [0]*dummy))
-                #print("Seq: ",np.shape(seq))
+                seq = np.concatenate((seq, [0]*dummy)).astype(int)
                 x = []
                 for n in seq:
-                    x_ = list(np.where(self.adj[n])[0])
+                    x_ = np.where(self.adj[n])[0]
+                    np.random.shuffle(x_)  #shuffle neighbor nodes
+                    x_ = list(x_)
                     x_.append(n) #append itself to the set of neighbors
                     lengths.append(len(x_))
                     pad = maxi - len(x_) #padding for each sequence
