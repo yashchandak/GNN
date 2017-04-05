@@ -65,6 +65,7 @@ class Config(object):
         class Data_sets(object):
             def __init__(self, args):
                 self.reduced_dims = args.reduce
+                self.add_degree = args.add_degree
                 self.binary_label_updates = args.bin_upd
 
         class RNNArchitecture(object):

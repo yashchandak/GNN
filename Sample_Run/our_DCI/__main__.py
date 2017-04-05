@@ -146,7 +146,7 @@ class RNNLM_v1(object):
         self.config.data_sets._len_labels = self.dataset.all_labels.shape[1]
         self.config.data_sets._len_features = self.dataset.all_features.shape[1]
         self.config.data_sets._multi_label = (np.sum(self.dataset.all_labels, axis=1) > 1).any()
-        self.config.num_steps = self.dataset.all_walks.shape[1]
+        self.config.num_steps = 20#self.dataset.all_walks.shape[1]
 
         print('--------- Project Path: ' + self.config.codebase_root_path + self.config.project_name)
         print('--------- Total number of nodes: ' + str(self.config.data_sets._len_vocab))
@@ -427,6 +427,7 @@ def get_argumentparser():
     parser.add_argument("--boot_epochs", default=1, help="Epochs for first bootstrap", type=int)
     parser.add_argument("--boot_reset", default=True, help="Reset weights after first bootstrap", type=bool)
     parser.add_argument("--concat", default=False, help="Concat attribute to hidden state", type=bool)
+    parser.add_argument("--add_degree", default=True, help="Append node degree to it's attributes", type=bool)
     parser.add_argument("--wce", default=True, help="Wrighted cross entropy", type=bool)
     parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
     parser.add_argument("--pat_improve", default=0.9999, help="Improvement threshold for patience", type=float)

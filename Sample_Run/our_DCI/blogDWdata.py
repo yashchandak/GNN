@@ -61,7 +61,8 @@ class DataSet(object):
         """Construct a DataSet.
         """
         self.cfg         = cfg
-        self.all_walks, self.node_seq   = self.get_walks(cfg.walks_dir)  # reverse the sequence
+        self.adj         = self.get_adj(cfg.adj_dir)
+        #self.all_walks, self.node_seq   = self.get_walks(cfg.walks_dir)  # reverse the sequence
         #self.node_seq    = self.all_walks[:, -1]  # index by ending node
         self.all_labels  = self.get_labels(cfg.label_dir)
         self.all_features= self.get_fetaures(cfg.features_dir)
@@ -75,7 +76,6 @@ class DataSet(object):
         self.change = 0
         self.label_cache, self.update_cache = {0:self.all_labels[0]}, {}
 
-        self.adj         = self.get_adj(cfg.adj_dir)
         self.wce         = self.get_wce()
 
     def get_adj(self, path):
@@ -117,6 +117,10 @@ class DataSet(object):
         all_features = np.load(path)
         all_features = all_features.astype(np.float32, copy=False)  # Required conversion for Python3
         all_features = np.concatenate(([np.zeros(all_features.shape[1])], all_features), 0)
+
+        if self.cfg.data_sets.add_degree:
+            all_features = np.concatenate((all_features, np.sum(self.adj, axis=0, keepdims=True).T), 1)
+
         return all_features
 
     def get_labels(self, path):
@@ -219,8 +223,9 @@ class DataSet(object):
                 dummy = max(0, (idx + batch_size) -len(vertices))
 
                 mask = [1]*batch_size
-                mask[-dummy:] = [0]*dummy
+                if dummy: mask[-dummy:] = [0]*dummy
 
+                #print("mask: ",mask, dummy)
                 seq = vertices[idx: idx + batch_size - dummy, 0]
                 seq = np.concatenate((seq, [0]*dummy)).astype(int)
                 x = []
