@@ -1,3 +1,5 @@
+
+# !/usr/bin/env python
 from __future__ import print_function
 
 import sys
@@ -16,7 +18,7 @@ import argparse
 from blogDWdata import DataSet
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 np.random.seed(1234)
 tf.set_random_seed(1234)
@@ -32,7 +34,7 @@ class RNNLM_v1(object):
         self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2,
                                              self.keep_prob_in, self.keep_prob_out,self.label_in)
         self.outputs     = self.arch.projection(self.rnn_outputs)
-        self.loss        = self.arch.loss(self.outputs, self.label_placeholder)
+        self.loss        = self.arch.loss(self.outputs, self.label_placeholder, self.wce_placeholder)
         self.optimizer   = self.config.solver._optimizer
         self.train       = self.arch.training(self.loss, self.optimizer)
 
@@ -47,13 +49,23 @@ class RNNLM_v1(object):
         depth_sum, attn_sum = 0, 0
 
         update_cache = {}
+
+        start = time.time()
+        load_time, run_time, update_time = 0, 0, 0
         for step, (raw_inp, input_batch, input_batch2, seq, counts, label_batch, lengths) in enumerate(
                 self.dataset.next_batch_same(data, node_count = 10)):
+            #print(step)
+            t = time.time()
+            load_time += t - start
+
             #TODO: Can ignore label batch creation to save time
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
             attn_values, pred_labels = sess.run([self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
+
+            t2 = time.time()
+            run_time += t2 - t
             #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
 
             if self.config.mRNN.attention:
@@ -72,6 +84,9 @@ class RNNLM_v1(object):
                 update_cache[seq[idx]] = list(updated) #store all the updates in temporary dict
                 start += count
 
+            start = time.time()
+            update_time += start - t2
+
         # Can't take the mean directly since all walks don't have nodes at all depths
         if self.config.mRNN.attention:
             self.attn_values = attn_sum / depth_sum
@@ -84,6 +99,7 @@ class RNNLM_v1(object):
         print("\nChange in label: :", np.sqrt(self.change/self.config.data_sets._len_vocab)*100)
         self.change = 0
 
+        print("Step: %d :: Load time: %f :: Run time: %f :: Update time: %f"%(step, load_time, run_time, update_time))
         #Assign the predicted labels to label_cache
         self.dataset.label_cache = update_cache
 
@@ -141,6 +157,9 @@ class RNNLM_v1(object):
         print('--------- Val nodes: ' + str(np.sum(self.dataset.val_nodes)))
         print('--------- Test nodes: ' + str(np.sum(self.dataset.test_nodes)))
 
+        #self.dataset.testPerformance()
+        #exit()
+
     def add_placeholders(self):
         self.data_placeholder = tf.placeholder(tf.float32,
                                                shape=[self.config.num_steps, None, self.config.data_sets._len_features],
@@ -153,6 +172,7 @@ class RNNLM_v1(object):
         self.keep_prob_in = tf.placeholder(tf.float32, name='keep_prob_in')
         self.keep_prob_out = tf.placeholder(tf.float32, name='keep_prob_out')
         self.label_in = tf.placeholder(tf.bool, name='label_input_condition')
+        self.wce_placeholder = tf.placeholder(tf.float32, shape=[self.config.data_sets._len_labels], name='Cross_entropy_weights')
 
     def create_feed_dict(self, input_batch, input_batch2, label_batch, label_in):
         feed_dict = {
@@ -199,7 +219,7 @@ class RNNLM_v1(object):
             keep_prob_out = self.config.mRNN._keep_prob_out
 
         total_loss, label_loss = [], []
-        gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy = [],[], [], [], [], []
+        gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy, bae = [],[],[], [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
         for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
@@ -209,6 +229,7 @@ class RNNLM_v1(object):
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
             feed_dict[self.keep_prob_in] = keep_prob_in
             feed_dict[self.keep_prob_out] = keep_prob_out
+            feed_dict[self.wce_placeholder] = self.dataset.wce
             # feed_dict[self.arch.initial_state] = state
 
             # Writes loss summary @last step of the epoch
@@ -236,26 +257,26 @@ class RNNLM_v1(object):
                     f1_micro.append(metrics[3])
                     f1_macro.append(metrics[4])
                     accuracy.append(metrics[-1])
-                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : gr_H = %0.12f : gr_I = %0.12f : gr_LI = %0.12f'
+                    bae.append(metrics[-3])
+                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : bae = %0.3f : gr_H = %0.12f : gr_I = %0.12f : gr_LI = %0.12f'
                       % (step, tot, np.mean(label_loss), np.mean(f1_micro),
-                         np.mean(accuracy), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
+                         np.mean(accuracy), np.mean(bae), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
                 sys.stdout.flush()
 
         if verbose:
             sys.stdout.write('\r')
-        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy)
+        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy), np.mean(bae)
 
     def fit(self, sess, label_in, inc=1):
         # Controls how many time to optimize the function before making next label prediction
-        average_loss, tr_micro, tr_macro, tr_accuracy = 0, 0, 0, 0
         for step in range(max(self.config.max_inner_epochs, inc)):
-            average_loss, tr_micro, tr_macro, tr_accuracy = self.run_epoch(sess, data='train', label_in=label_in,
+            average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae = self.run_epoch(sess, data='train', label_in=label_in,
                                                                            train_op=self.train,
                                                                            summary_writer=self.summary_writer_train)
             if inc > 1:
                 print(tr_micro, tr_macro, tr_accuracy)
         # return last evaluated loasses
-        return average_loss, tr_micro, tr_macro, tr_accuracy
+        return average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae
 
     def fit_outer(self, sess):
         # define parametrs for early stopping early stopping
@@ -269,7 +290,7 @@ class RNNLM_v1(object):
         done_looping = False
         step = 1
         best_step = -1
-        flag = True
+        flag = self.config.boot_reset
         losses = []
         learning_rate = self.config.solver.learning_rate
         label_in = None  # Ignore the label inputs during bootstrap | first run
@@ -279,15 +300,15 @@ class RNNLM_v1(object):
             # sess.run([self.step_incr_op])
             epoch = step  # self.arch.global_step.eval(session=sess)
 
-            print("------ Graph Reset | Next iteration -----")
-            if inc == 1 and flag: #reset after first bootstrap
-                print("=========Weight reset==========\n\n\n")
+            print("------ Next iteration -----")
+            if step == 2 and flag: #reset after first bootstrap
+                print("=========Graph Weight reset==========\n\n\n")
                 sess.run(self.init)  # reset all weights
                 flag = False
             print([v.name for v in tf.trainable_variables()])  # Just to monitor the trainable variables in tf graph
             start_time = time.time()
             # Fit the model to predict best possible labels given the current estimates of unlabeled values
-            average_loss, tr_micro, tr_macro, tr_accuracy = self.fit(sess, label_in, inc)
+            average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae = self.fit(sess, label_in, inc)
             duration = time.time() - start_time
             inc = 1  # reset inc
             label_in = True # Make this true after first round of trainig has been done
@@ -302,11 +323,11 @@ class RNNLM_v1(object):
                 print('Bootstrap time: ', time.time() - s)
 
                 metrics = self.predict_results(sess, data='val')  # evaluate performance for validation set
-                val_micro, val_macro, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-2], metrics[-1]
+                val_micro, val_macro, val_bae, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-3], metrics[-2], metrics[-1]
 
                 print(
-                    '\nEpoch %d: tr_loss = %.2f, val_loss %.2f || tr_micro = %.2f, val_micro = %.2f || tr_acc = %.2f, val_acc = %.2f  (%.3f sec)'
-                    % (epoch, average_loss, val_loss, tr_micro, val_micro, tr_accuracy, val_accuracy, duration))
+                    '\nEpoch %d: tr_loss = %.2f, val_loss %.2f || tr_micro = %.2f, val_micro = %.2f || tr_acc = %.2f, val_acc = %.2f  || tr_bae = %.2f, val_bae = %.2f ||(%.3f sec)'
+                    % (epoch, average_loss, val_loss, tr_micro, val_micro, tr_accuracy, val_accuracy, tr_bae, val_bae, duration))
 
                 # Save model only if the improvement is significant
                 if (val_loss < validation_loss * improvement_threshold) and (epoch > self.config.save_epochs_after):
@@ -411,23 +432,25 @@ def get_argumentparser():
     parser.add_argument("--folder_suffix", default='', help="folder name suffix")
 
     parser.add_argument("--batch_size", default=32, help="Batch size", type=int)
-    parser.add_argument("--boot_epochs", default=4, help="Epochs for first bootstrap", type=int)
+    parser.add_argument("--boot_epochs", default=1, help="Epochs for first bootstrap", type=int)
+    parser.add_argument("--boot_reset", default=True, help="Reset weights after first bootstrap", type=bool)
+    parser.add_argument("--concat", default=False, help="Concat attribute to hidden state", type=bool)
+    parser.add_argument("--wce", default=True, help="Wrighted cross entropy", type=bool)
     parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
     parser.add_argument("--pat_improve", default=0.9999, help="Improvement threshold for patience", type=float)
     parser.add_argument("--lr", default=0.001, help="Learning rate", type=float)
     parser.add_argument("--lu", default=0.75, help="Label update rate", type=float)
     parser.add_argument("--l2", default=1e-3, help="L2 loss", type=float)
     parser.add_argument("--opt", default='adam', help="Optimizer type (adam, rmsprop, sgd)")
-    parser.add_argument("--cell", default='myLSTM', help="RNN cell (LSTM, myLSTM, GRU)")
-    parser.add_argument("--reduce", default=32, help="Reduce Attribute dimensions to", type=int)
+    parser.add_argument("--cell", default='LSTM', help="RNN cell (LSTM, myLSTM, GRU)")
+    parser.add_argument("--reduce", default=0, help="Reduce Attribute dimensions to", type=int)
     parser.add_argument("--hidden", default=16, help="Hidden units", type=int)
-    parser.add_argument("--attention", default=2, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
+    parser.add_argument("--attention", default=0, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
     parser.add_argument("--drop_in", default=0.5, help="Dropout for input", type=float)
     parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer", type=float)
 
     parser.add_argument("--ssl", default=False, help="Semi-supervised loss", type=bool)
     parser.add_argument("--gating", default=False, help="RNN gating", type=bool)
-    parser.add_argument("--boot_reset", default=False, help="Reset weights after bootstrap", type=bool)
     parser.add_argument("--inner_converge", default=False, help="Convergence during bootstrap", type=bool)
 
     return parser

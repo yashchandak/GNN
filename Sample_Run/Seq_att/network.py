@@ -1,6 +1,6 @@
 import tensorflow as tf
 import numpy as np
-from cells import RNN, MyLSTMCell
+from cells import RNN, MyLSTMCell, LSTMgated
 from collections import Counter
 import math
 from tensorflow.python.ops.seq2seq import sequence_loss
@@ -33,8 +33,9 @@ class Network(object):
         Args: rnn_outputs: (batch_size, hidden_size).
         Returns: (batch_size, len_labels )
         """
+        batch, inp_dim = rnn_outputs.get_shape().as_list()
         with tf.variable_scope('Projection'):
-            U = tf.get_variable('Matrix', [self.config.mRNN._hidden_size, self.config.data_sets._len_labels])
+            U = tf.get_variable('Matrix', [inp_dim, self.config.data_sets._len_labels])
             proj_b = tf.get_variable('Bias', [self.config.data_sets._len_labels])
             outputs = tf.matmul(rnn_outputs, U) + proj_b
 
@@ -68,9 +69,11 @@ class Network(object):
                 #inputs = tf.reshape(tf.matmul(tf.reshape(inputs, [-1, feature_size]), W_ii), [max_len,-1,self.config.data_sets.reduced_dims])
                 scope.reuse_variables()
 
+
         # Split along time direction
         inputs = tf.unstack(inputs, axis=0)
         inputs2 = tf.unstack(inputs2, axis=0)
+        context = inputs[-1]
 
         if state == None:
             #initState = self.initial_state#tf.random_normal([self.config.batch_size,hidden_size], stddev=0.1)
@@ -97,32 +100,37 @@ class Network(object):
                 state = state[0]
             elif self.config.mRNN.cell == 'LSTM': cell_type = tf.nn.rnn_cell.LSTMCell
             elif self.config.mRNN.cell == 'myLSTM': cell_type = MyLSTMCell
+            elif self.config.mRNN.cell == 'LSTMgated': cell_type = LSTMgated
             else: raise ValueError('Invalid Cell type')
 
             cell = cell_type(hidden_size)
-            cell2 = cell_type(hidden_size)
+            cell2 = tf.nn.rnn_cell.BasicRNNCell(hidden_size)
+            # cell2 = cell_type(hidden_size)
             #cell = BNLSTMCell(hidden_size)
-            #cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = keep_prob)
-            #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * num_layers, state_is_tuple=False)
+            #cell = tf.nn.rnn_cell.DropoutWrapper(cell, output_keep_prob = .5)
+            #cell = tf.nn.rnn_cell.MultiRNNCell([cell] * 2, state_is_tuple=True)
 
             #outputs, self.final_state = tf.nn.dynamic_rnn(cell, inp_cat, dtype=tf.float32, time_major = True)
             with tf.variable_scope('Loop') as scope:
                 rnn_outputs = []
                 l = len(inp_cat)
                 d = max(0, l - self.config.max_depth) #clip maximum depth to be traversed
-                for tstep in range(d, l-1):
-                    outs, state = cell.__call__(inp_cat[tstep], state=state)
+                for tstep in range(d, l):
+                    outs, state = cell.__call__(inp_cat[tstep], state=state)#, context=context)
+                    if self.config.mRNN.concat:
+                        outs = tf.concat(1, [outs, inp_cat[tstep]])
                     rnn_outputs.append(outs)
                     scope.reuse_variables()
 
-            with tf.variable_scope('Loop2') as scope:
-                outs, state = cell2.__call__(inp_cat[tstep+1], state=state)
-                rnn_outputs.append(outs)
-                scope.reuse_variables()
+            # with tf.variable_scope('Loop2') as scope:
+            #    c, h = state
+            #    outs, state = cell2.__call__(inp_cat[tstep+1], state=c)
+            #    rnn_outputs.append(outs)
+            #    scope.reuse_variables()
 
             self.final_state = state
 
-        context = inputs[-1] #Treat the attribute of node-of-interest as context for attention
+        #context = inputs[-1] #Treat the attribute of node-of-interest as context for attention
         self.attn_vals = tf.constant(0)
         if self.config.mRNN.attention == 0: att_state = self.final_state[0]
         elif self.config.mRNN.attention == 1: att_state = self.attention1(rnn_outputs, context)
@@ -176,10 +184,18 @@ class Network(object):
             attn_size = state_size  # by default A = state_size
         attn_length = num_step #length of attention vector = Num_step
 
+        #attention using convolution(ineffecient)
         hidden = tf.reshape(states,[-1, attn_length, 1, state_size]) # [Batch, Num_step, 1, state_size]
-        # filter
+        #filter
         k = tf.get_variable("AttnW",[1, 1, state_size, attn_size]) # [1, 1, state_size, A]
         attn_features = tf.nn.conv2d(hidden, k, [1,1,1,1], "SAME") # [Batch, Num_step, 1, state_size] * [1, 1, state_size, A] = [Batch, Num_step, 1, A]
+
+        #attention without conv (effecient)
+        #hidden = tf.reshape(states, [-1, state_size])  # [Batch * Num_step, state_size]
+        #k = tf.get_variable("AttnW", [state_size, attn_size])  # [state_size, A] -> [Batch, Num_step, 1, state_size]
+        #attn_features = tf.reshape(tf.matmul(hidden, k), [-1, attn_length, 1, attn_size])  # [Batch* Num_step, state_size] * [state_size, A] -> [Batch, Num_step, 1, A]
+        #hidden = tf.reshape(hidden, [-1, attn_length, 1, state_size]) # [Batch * Num_step, state_size] ->
+
         attention_softmax_weights = tf.get_variable("W_attention_softmax", [attn_size]) # [A]
 
         #y = tf.nn.rnn_cell._linear(args = context, output_size = attn_size, bias = False) # W*C + b : [Batch, context_size] -> [Batch, A]
@@ -200,7 +216,7 @@ class Network(object):
 
 
 
-    def loss(self, predictions, labels):
+    def loss(self, predictions, labels, wce):
         """
          Args: predictions: (batch_size, len_labels)
                labels: (batch_size, len_labels).
@@ -217,11 +233,12 @@ class Network(object):
                 # binary cross entropy for labels
                 cross_loss = tf.add(tf.log(1e-10 + self.label_preds)*labels,
                                    tf.log(1e-10 + (1-self.label_preds))*(1-labels))
-                cross_entropy_label = -1*tf.reduce_mean(tf.reduce_sum(cross_loss,1))
+                cross_entropy_label = -1*tf.reduce_mean(tf.reduce_sum(wce*cross_loss,1))
 
             else:
                 self.label_preds = tf.nn.softmax(predictions)
-                cross_entropy_label = tf.reduce_mean(-tf.reduce_sum(labels * tf.log(self.label_preds + 1e-10), 1))
+                cross_loss = labels * tf.log(self.label_preds + 1e-10)
+                cross_entropy_label = tf.reduce_mean(-tf.reduce_sum(wce*cross_loss, 1))
 
             tf.add_to_collection('total_loss', cross_entropy_label)
 

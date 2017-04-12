@@ -32,6 +32,7 @@ class Config(object):
         self.max_outer_epochs = args.max_outer
         self.max_inner_epochs = args.max_inner
         self.boot_epochs = args.boot_epochs
+        self.boot_reset = args.boot_reset
         # Validation frequence
         self.val_epochs_freq = args.val_freq #1
         # Model save frequency
@@ -44,7 +45,7 @@ class Config(object):
 
         self.metrics = ['coverage', 'average_precision', 'ranking_loss', 'micro_f1', 'macro_f1', 'micro_precision',
                    'macro_precision', 'micro_recall', 'macro_recall', 'p@1', 'p@3', 'p@5', 'hamming_loss',
-                   'cross-entropy', 'accuracy']
+                   'bae', 'cross-entropy', 'accuracy']
 
         class Solver(object):
             def __init__(self, args):
@@ -61,6 +62,7 @@ class Config(object):
                 self._optimizer = self.opt(self.learning_rate)
                 self._curr_label_loss = True
                 self._L2loss = args.l2
+                self.wce = args.wce
 
         class Data_sets(object):
             def __init__(self, args):
@@ -73,6 +75,7 @@ class Config(object):
                 self._keep_prob_in = 1 - args.drop_in
                 self._keep_prob_out = 1 - args.drop_out
                 self.cell = args.cell
+                self.concat = args.concat
                 self.attention = args.attention
 
         self.solver = Solver(args)
