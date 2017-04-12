@@ -1,9 +1,10 @@
+
+# !/usr/bin/env python
 from __future__ import print_function
 
 import sys
 import time
 import os
-import threading
 from copy import deepcopy
 
 import numpy as np
@@ -14,32 +15,27 @@ import Eval_Calculate_Performance as perf
 from Eval_utils import write_results, plotit
 import network as architecture
 import argparse
-from blogDWdata import DataSet, Qrunner
+from blogDWdata import DataSet
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"   # see issue #152
-os.environ["CUDA_VISIBLE_DEVICES"]="1"
+os.environ["CUDA_VISIBLE_DEVICES"]="0"
 
 np.random.seed(1234)
 tf.set_random_seed(1234)
-
-_TRAIN_ = 0
-_VAL_   = 1
-_TEST_  = 2
-_ALL_   = 3
 
 class RNNLM_v1(object):
     def __init__(self, config):
         self.config = config
         self.load_data()
         self.add_placeholders()
-        self.add_Q()
         self.arch = self.add_network(config)
         self.change = 0
+        self.attn_values = 0
 
         self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2,
-                                             self.keep_prob_in, self.keep_prob_out,self.label_in)
+                                             self.keep_prob_in, self.keep_prob_out, self.inp_lengths)
         self.outputs     = self.arch.projection(self.rnn_outputs)
-        self.loss        = self.arch.loss(self.outputs, self.label_placeholder)
+        self.loss        = self.arch.loss(self.outputs, self.label_placeholder, self.wce_placeholder)
         self.optimizer   = self.config.solver._optimizer
         self.train       = self.arch.training(self.loss, self.optimizer)
 
@@ -48,20 +44,30 @@ class RNNLM_v1(object):
         self.step_incr_op = self.arch.global_step.assign(self.arch.global_step + 1)
         self.init         = tf.global_variables_initializer()
 
-
-    def bootstrap(self, sess, data, label_in):
+    def bootstrap2(self, sess, data):
         alpha = self.config.solver.label_update_rate
         if len(self.dataset.label_cache.items()) <= 1: alpha =1.0 #First update
         depth_sum, attn_sum = 0, 0
 
         update_cache = {}
+
+        start = time.time()
+        load_time, run_time, update_time = 0, 0, 0
         for step, (raw_inp, input_batch, input_batch2, seq, counts, label_batch, lengths) in enumerate(
                 self.dataset.next_batch_same(data, node_count = 10)):
+            #print(step)
+            t = time.time()
+            load_time += t - start
+
             #TODO: Can ignore label batch creation to save time
-            feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
+            feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch)
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
+            feed_dict[self.inp_lengths] = lengths
             attn_values, pred_labels = sess.run([self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
+
+            t2 = time.time()
+            run_time += t2 - t
             #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
 
             if self.config.mRNN.attention:
@@ -74,17 +80,18 @@ class RNNLM_v1(object):
             start = 0
             for idx, count in enumerate(counts):
                 new = np.mean(pred_labels[start:start+count], axis=0)
-                old = np.array(self.dataset.label_cache.get(seq[idx], list(self.dataset.all_labels[0])))
+                old = self.dataset.label_cache.get(seq[idx], self.dataset.all_labels[0])
                 updated = (1-alpha)*old + alpha*new
                 self.change += np.mean((updated - old) ** 2)
-                update_cache[seq[idx]] = list(updated) #store all the updates in temporary dict
+                update_cache[seq[idx]] = updated #store all the updates in temporary dict
                 start += count
+
+            start = time.time()
+            update_time += start - t2
 
         # Can't take the mean directly since all walks don't have nodes at all depths
         if self.config.mRNN.attention:
             self.attn_values = attn_sum / depth_sum
-        else:
-            self.attn_values = 0
 
         print("Depth sums: ", depth_sum)
         print("Attention: ", self.attn_values)
@@ -92,45 +99,40 @@ class RNNLM_v1(object):
         print("\nChange in label: :", np.sqrt(self.change/self.config.data_sets._len_vocab)*100)
         self.change = 0
 
+        print("Step: %d :: Load time: %f :: Run time: %f :: Update time: %f"%(step, load_time, run_time, update_time))
         #Assign the predicted labels to label_cache
         self.dataset.label_cache = update_cache
 
 
-    def bootstrap2(self, sess, data, label_in):
-        for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
-                self.dataset.next_batch(data, batch_size=512, shuffle=False)):
-            feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch, label_in)
+    def bootstrap(self, sess, data, update=True):
+        for step, (input_batch, input_batch2, seq, label_batch, tot, lengths) in enumerate(
+                self.dataset.next_batch(data, batch_size=self.config.batch_size, shuffle=False)):
+            feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch)
             feed_dict[self.keep_prob_in] = 1
             feed_dict[self.keep_prob_out] = 1
+            feed_dict[self.inp_lengths] = lengths
             # feed_dict[self.arch.initial_state] = state
             #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
             attn_values, pred_labels = sess.run([self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
-            print(attn_values.shape, pred_labels.shape)
+            #print(attn_values.shape, pred_labels.shape)
             self.dataset.accumulate_label_cache(pred_labels, seq)
 
             #print('%d/%d'%(step,tot), end="\r")
             #sys.stdout.flush()
+        if update:
+            self.dataset.update_label_cache()
 
-        self.dataset.update_label_cache()
+    def predict_results(self, sess, data, preds=None):
+        if preds == None:
+            preds = self.dataset.label_cache
 
-    def predict_results(self, sess, data, return_labels=False):
         labels_orig, labels_pred = [], []
         for node in np.where(self.dataset.get_nodes(data))[0]:
             # print('====',self.dataset.label_cache[node])
             labels_orig.append(self.dataset.all_labels[node])
-            labels_pred.append(self.dataset.label_cache[node])
+            labels_pred.append(preds[node])
 
-        if return_labels:
-            return labels_pred
-        else:
-            return perf.evaluate(labels_pred, labels_orig, 0)
-
-    def add_Q(self):
-        with tf.device("/cpu:0"):
-            self.Qrunner = Qrunner(self.config, self.dataset)
-            self.x_nodes, self.x_feats, self.x_labels, \
-            self.keep_prob_in, self.keep_prob_out = self.Qrunner.get_inputs()
-
+        return perf.evaluate(labels_pred, labels_orig, 0)
 
     def load_data(self):
         # Get the 'encoded data'
@@ -156,20 +158,8 @@ class RNNLM_v1(object):
         print('--------- Val nodes: ' + str(np.sum(self.dataset.val_nodes)))
         print('--------- Test nodes: ' + str(np.sum(self.dataset.test_nodes)))
 
-    def add_Q2(self):
-        self.selectQ = tf.placeholder(tf.int32, [], name='Q_selector')
-
-        trainQ      = tf.FIFOQueue(capacity=20)
-        trainBatch   = trainQ.enqueue(self.dataset.next_batch('train', self.config.batch_size, shuffle=True))
-        testQ       = tf.FIFOQueue(capacity=20)
-        testBatch    = testQ.enqueue(self.dataset.next_batch_same('test', node_count=10))
-        valQ        = tf.FIFOQueue(capacity=20)
-        valBatch     = valQ.enqueue(self.dataset.next_batch_same('val', node_count=10))
-        allQ         = tf.FIFOQueue(capacity=20)
-        allBatch      = allQ.enqueue(self.dataset.next_batch_same('all', node_count=10))
-
-        Q = tf.QueueBase.from_list(self.selectQ, [trainQ, valQ, testQ])
-        self.data = Q.dequeue()
+        #self.dataset.testPerformance()
+        #exit()
 
     def add_placeholders(self):
         self.data_placeholder = tf.placeholder(tf.float32,
@@ -182,16 +172,14 @@ class RNNLM_v1(object):
                                                 name='Target')
         self.keep_prob_in = tf.placeholder(tf.float32, name='keep_prob_in')
         self.keep_prob_out = tf.placeholder(tf.float32, name='keep_prob_out')
-        self.label_in = tf.placeholder(tf.bool, name='label_input_condition')
+        self.wce_placeholder = tf.placeholder(tf.float32, shape=[self.config.data_sets._len_labels], name='Cross_entropy_weights')
+        self.inp_lengths = tf.placeholder(tf.int32, shape=[None], name='input_lengths')
 
-
-
-    def create_feed_dict(self, input_batch, input_batch2, label_batch, label_in):
+    def create_feed_dict(self, input_batch, input_batch2, label_batch):
         feed_dict = {
             self.data_placeholder: input_batch,
             self.data_placeholder2: input_batch2,
             self.label_placeholder: label_batch,
-            self.label_in: label_in
         }
         return feed_dict
 
@@ -219,7 +207,7 @@ class RNNLM_v1(object):
         summary_writer.add_summary(summary_str, step)
         summary_writer.flush()
 
-    def run_epoch(self, sess, data, label_in, train_op=None, summary_writer=None, verbose=50):
+    def run_epoch(self, sess, data, train_op=None, summary_writer=None, verbose=50):
         #Optimize the objective for one entire epoch via mini-batches
         
         if not train_op:
@@ -231,31 +219,30 @@ class RNNLM_v1(object):
             keep_prob_out = self.config.mRNN._keep_prob_out
 
         total_loss, label_loss = [], []
-        gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy = [],[], [], [], [], []
+        gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy, bae = [],[],[], [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
+        for step, (input_batch, input_batch2, seq, label_batch, tot, lengths) in enumerate(
+                self.dataset.next_batch(data, self.config.batch_size, shuffle=True)):
 
+            # print("\n\n\nActualLabelCount: ", np.shape(input_batch), np.shape(input_batch2), np.shape(label_batch), np.shape(seq))
+            feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch)
+            feed_dict[self.keep_prob_in] = keep_prob_in
+            feed_dict[self.keep_prob_out] = keep_prob_out
+            feed_dict[self.wce_placeholder] = self.dataset.wce
+            feed_dict[self.inp_lengths] = lengths
+            # feed_dict[self.arch.initial_state] = state
 
-        #coord = tf.train.Coordinator()
-        # start the tensorflow QueueRunner's
-        # threads1 = tf.train.start_queue_runners(sess=sess, coord=coord)
-        # start our custom queue runner's threads
-        threads = self.Qrunner.start_threads(sess, samples='train')
-        step, tot = 0, self.dataset.num_batches
-        while True:
-            step += 1
-
-            # Writes loss summary @end of the epoch
-            if step == tot and summary_writer != None:
-                _, loss_value, summary, pred_labels, x_labels = sess.run([train_op, self.loss, self.summary, \
-                                                                          self.arch.label_preds, self.x_labels])
-                summary_writer.add_summary(summary, self.arch.global_step.eval(session=sess))
-                summary_writer.flush()
-
+            # Writes loss summary @last step of the epoch
+            if (step + 1) < tot:
+                _, loss_value, pred_labels = sess.run([train_op, self.loss, self.arch.label_preds],
+                                                      feed_dict=feed_dict)
             else:
-                _, loss_value, pred_labels, x_labels = sess.run([train_op, self.loss, \
-                                                                 self.arch.label_preds, self.x_labels])
-
+                _, loss_value, summary, pred_labels = sess.run(
+                    [train_op, self.loss, self.summary, self.arch.label_preds], feed_dict=feed_dict)
+                if summary_writer != None:
+                    summary_writer.add_summary(summary, self.arch.global_step.eval(session=sess))
+                    summary_writer.flush()
             # print(loss_value)
             total_loss.append(loss_value[0])
             label_loss.append(loss_value[1])
@@ -267,39 +254,32 @@ class RNNLM_v1(object):
             if verbose and step % verbose == 0:
                 metrics = [0] * 10
                 if self.config.solver._curr_label_loss:
-                    metrics = perf.evaluate(pred_labels, x_labels, 0)
+                    metrics = perf.evaluate(pred_labels, label_batch, 0)
                     f1_micro.append(metrics[3])
                     f1_macro.append(metrics[4])
                     accuracy.append(metrics[-1])
-                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : gr_H = %0.12f : gr_I = %0.12f : gr_LI = %0.12f'
+                    bae.append(metrics[-3])
+                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : bae = %0.3f : gr_H = %0.12f : gr_I = %0.12f : gr_LI = %0.12f'
                       % (step, tot, np.mean(label_loss), np.mean(f1_micro),
-                         np.mean(accuracy), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
+                         np.mean(accuracy), np.mean(bae), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
                 sys.stdout.flush()
-
-            #All Data fetch threads have terminated and the Queue is also empt
-            if threading.active_count() == 1  and sess.run(self.Qrunner.queue.size()) == 0: break
-
-        # finally:
-        # coord.request_stop()
-        # coord.join(threads)
 
         if verbose:
             sys.stdout.write('\r')
-        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy)
+        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy), np.mean(bae)
 
-    def fit(self, sess, label_in, inc=1):
+    def fit_old(self, sess, inc=1):
         # Controls how many time to optimize the function before making next label prediction
         average_loss, tr_micro, tr_macro, tr_accuracy = 0, 0, 0, 0
         for step in range(max(self.config.max_inner_epochs, inc)):
-            average_loss, tr_micro, tr_macro, tr_accuracy = self.run_epoch(sess, data='train', label_in=label_in,
-                                                                           train_op=self.train,
+            average_loss, tr_micro, tr_macro, tr_accuracy = self.run_epoch(sess, data='train', train_op=self.train,
                                                                            summary_writer=self.summary_writer_train)
             if inc > 1:
                 print(tr_micro, tr_macro, tr_accuracy)
         # return last evaluated loasses
         return average_loss, tr_micro, tr_macro, tr_accuracy
 
-    def fit_outer(self, sess):
+    def fit_outer_old(self, sess):
         # define parametrs for early stopping early stopping
         max_epochs = self.config.max_outer_epochs
         patience = self.config.patience  # look as this many examples regardless
@@ -314,7 +294,6 @@ class RNNLM_v1(object):
         flag = self.config.boot_reset
         losses = []
         learning_rate = self.config.solver.learning_rate
-        label_in = None  # Ignore the label inputs during bootstrap | first run
         # sess.run(self.init) #DO NOT DO THIS!! Doesn't restart from checkpoint
         while (step <= max_epochs) and (not done_looping):
 
@@ -322,17 +301,16 @@ class RNNLM_v1(object):
             epoch = step  # self.arch.global_step.eval(session=sess)
 
             print("------ Graph Reset | Next iteration -----")
-            if inc == 1 and flag: #reset after first bootstrap
+            if step == 2 and flag: #reset after first bootstrap
                 print("=========Weight reset==========\n\n\n")
                 sess.run(self.init)  # reset all weights
                 flag = False
             print([v.name for v in tf.trainable_variables()])  # Just to monitor the trainable variables in tf graph
             start_time = time.time()
             # Fit the model to predict best possible labels given the current estimates of unlabeled values
-            average_loss, tr_micro, tr_macro, tr_accuracy = self.fit(sess, label_in, inc)
+            average_loss, tr_micro, tr_macro, tr_accuracy = self.fit(sess, inc)
             duration = time.time() - start_time
             inc = 1  # reset inc
-            label_in = True # Make this true after first round of trainig has been done
 
             if (epoch % self.config.val_epochs_freq == 0):
                 # Get new estimates of unlabeled validation nodes
@@ -340,7 +318,7 @@ class RNNLM_v1(object):
                 old_labels = deepcopy(self.dataset.label_cache)
 
                 s = time.time()
-                self.bootstrap(sess, data='all', label_in=label_in)
+                self.bootstrap(sess, data='all')
                 print('Bootstrap time: ', time.time() - s)
 
                 metrics = self.predict_results(sess, data='val')  # evaluate performance for validation set
@@ -356,7 +334,8 @@ class RNNLM_v1(object):
                     validation_loss = val_loss
 
                     self.saver.save(sess, self.config.ckpt_dir + 'last-best')
-                    np.save(self.config.ckpt_dir + 'last-best_labels.npy', old_labels)
+                    #np.save(self.config.ckpt_dir + 'last-best_labels.npy', old_labels)
+                    np.save(self.config.ckpt_dir + 'last-best_labels.npy', self.dataset.label_cache)
 
                     best_step = epoch
                     patience = epoch + max(self.config.val_epochs_freq, patience_increase)
@@ -395,9 +374,113 @@ class RNNLM_v1(object):
         self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))  # restore the best parameters
         self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()
 
-        self.bootstrap(sess, data='all', label_in=label_in)  # Get new estimates of unlabeled nodes
+        #self.bootstrap(sess, data='all')  # Get new estimates of unlabeled nodes
         metrics = self.predict_results(sess, data='test')
 
+        self.print_metrics(metrics)  # Get predictions for test nodes
+
+        return metrics, self.attn_values
+
+
+    def fit(self, sess, epoch, patience, validation_loss):
+        # Controls how many time to optimize the function before making next label prediction
+        patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
+        improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
+
+        for i in range(self.config.max_outer_epochs): #change this
+            start_time = time.time()
+            average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae = self.run_epoch(sess, data='train', train_op=self.train,
+                                                                           summary_writer=self.summary_writer_train)
+            duration = time.time() - start_time
+
+            print("Tr_micro: %f :: Tr_macro: %f :: Tr_accuracy: %f :: Tr_bae: %f :: Time: %f"%(tr_micro, tr_macro, tr_accuracy, tr_bae, duration))
+            if (epoch % self.config.val_epochs_freq == 0):
+                # Get new estimates of unlabeled validation nodes
+
+                # the actual inputs that resulted in this new result
+                #old_labels = deepcopy(self.dataset.label_cache)
+
+                s = time.time()
+                self.dataset.update_cache = {}
+                self.bootstrap(sess, data='all', update=False)
+                print('Bootstrap time: ', time.time() - s)
+
+                pred_labels = self.dataset.get_update_cache()
+                metrics = self.predict_results(sess, data='val', preds=pred_labels)  # evaluate performance for validation set
+                val_micro, val_macro, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-2], metrics[-1]
+
+                print('Epoch %d: tr_loss = %.2f, val_loss %.2f || tr_micro = %.2f, val_micro = %.2f || tr_acc = %.2f, val_acc = %.2f  (%.3f sec)'
+                        %(epoch, average_loss, val_loss, tr_micro, val_micro, tr_accuracy, val_accuracy, duration))
+
+                # Save model only if the improvement is significant
+                if (val_loss < validation_loss * improvement_threshold):
+                    validation_loss = val_loss
+                    self.saver.save(sess, self.config.ckpt_dir + 'last-best')
+                    np.save(self.config.ckpt_dir + 'last-best_labels.npy', pred_labels)
+
+                    patience = epoch + max(self.config.val_epochs_freq, patience_increase)
+                    print('best step %d\n' % (epoch))
+
+                if patience <= epoch:
+                    break
+
+            epoch +=1
+
+        return epoch, validation_loss
+
+    def fit_outer(self, sess):
+        # define parametrs for early stopping early stopping
+        max_epochs = self.config.max_outer_epochs
+        patience = self.config.patience  # look as this many examples regardless
+        done_looping = False
+        epoch = 1
+        best_step = -1
+        flag = self.config.boot_reset
+        outer_epoch =1
+        learning_rate = self.config.solver.learning_rate
+        validation_loss = 1e6
+
+        while (epoch <= max_epochs) and (not done_looping):
+            # sess.run([self.step_incr_op])
+            # self.arch.global_step.eval(session=sess)
+            if outer_epoch == 2 and flag: #reset after first bootstrap
+                print("------ Graph Reset | First bootstrap done -----\n\n\n")
+                sess.run(self.init)  # reset all weights
+                flag = False
+                validation_loss = 1e6
+                #IMP: under assumption that we can always do better by adding pseudo-labels,
+                # otherwise val_loss of first prediction needs to be considered as well
+            print([v.name for v in tf.trainable_variables()])  # Just to monitor the trainable variables in tf graph
+
+            # Fit the model to predict best possible labels given the current estimates of unlabeled values
+            epoch, new_loss = self.fit(sess, epoch, patience, validation_loss)
+            outer_epoch +=1
+            if new_loss >= validation_loss:
+                learning_rate = learning_rate / 10
+                self.optimizer = self.config.solver.opt(learning_rate)
+                print('--------- Learning rate dropped to: %f' % (learning_rate))
+                self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))
+                self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()
+
+                if learning_rate <= 0.000001:
+                    print('Stopping by patience method')
+                    done_looping = True
+
+            else:
+                self.dataset.update_label_cache()
+                print("========== Label updated ============= \n")
+                # Get predictions for test nodes
+                self.print_metrics(self.predict_results(sess, data='test'))
+                validation_loss = new_loss
+
+            patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
+
+        # End of Training
+        self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))  # restore the best parameters
+        self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()
+
+        #self.bootstrap(sess, data='all')  # Get new estimates of unlabeled nodes
+        metrics = self.predict_results(sess, data='test')
         self.print_metrics(metrics)  # Get predictions for test nodes
 
         return metrics, self.attn_values
@@ -437,7 +520,7 @@ def train_DNNModel(cfg):
 def get_argumentparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", default='/home/priyesh/Desktop/Codes/Sample_Run/', help="Base path for the code")
-    parser.add_argument("--project", default='Seq_att', help="Project folder")
+    parser.add_argument("--project", default='Seq_att_Q', help="Project folder")
     parser.add_argument("--dataset", default='cora', help="Dataset to evluate")
     parser.add_argument("--percent", default=20, help="Training percent")
     parser.add_argument("--folds", default='1_2_3_4_5', help="Training folds")
@@ -452,20 +535,21 @@ def get_argumentparser():
     parser.add_argument("--pat_inc", default=2, help="Patience Increase", type=int)
     parser.add_argument("--folder_suffix", default='', help="folder name suffix")
 
-    parser.add_argument("--batch_size", default=32, help="Batch size", type=int)
-    parser.add_argument("--boot_epochs", default=4, help="Epochs for first bootstrap", type=int)
+    parser.add_argument("--batch_size", default=100, help="Batch size", type=int)
+    parser.add_argument("--boot_epochs", default=1, help="Epochs for first bootstrap", type=int)
     parser.add_argument("--boot_reset", default=True, help="Reset weights after first bootstrap", type=bool)
     parser.add_argument("--concat", default=False, help="Concat attribute to hidden state", type=bool)
+    parser.add_argument("--wce", default=True, help="Wrighted cross entropy", type=bool)
     parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
     parser.add_argument("--pat_improve", default=0.9999, help="Improvement threshold for patience", type=float)
     parser.add_argument("--lr", default=0.001, help="Learning rate", type=float)
-    parser.add_argument("--lu", default=0.75, help="Label update rate", type=float)
+    parser.add_argument("--lu", default=0.2, help="Label update rate", type=float)
     parser.add_argument("--l2", default=1e-3, help="L2 loss", type=float)
     parser.add_argument("--opt", default='adam', help="Optimizer type (adam, rmsprop, sgd)")
-    parser.add_argument("--cell", default='myLSTM', help="RNN cell (LSTM, myLSTM, GRU)")
-    parser.add_argument("--reduce", default=32, help="Reduce Attribute dimensions to", type=int)
+    parser.add_argument("--cell", default='LSTMgated', help="RNN cell (LSTM, myLSTM, LSTMgated, GRU)")
+    parser.add_argument("--reduce", default=0, help="Reduce Attribute dimensions to", type=int)
     parser.add_argument("--hidden", default=16, help="Hidden units", type=int)
-    parser.add_argument("--attention", default=2, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
+    parser.add_argument("--attention", default=0, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
     parser.add_argument("--drop_in", default=0.5, help="Dropout for input", type=float)
     parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer", type=float)
 

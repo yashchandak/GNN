@@ -45,7 +45,7 @@ class Config(object):
 
         self.metrics = ['coverage', 'average_precision', 'ranking_loss', 'micro_f1', 'macro_f1', 'micro_precision',
                    'macro_precision', 'micro_recall', 'macro_recall', 'p@1', 'p@3', 'p@5', 'hamming_loss',
-                   'cross-entropy', 'accuracy']
+                   'bae','cross-entropy', 'accuracy']
 
         class Solver(object):
             def __init__(self, args):
@@ -62,6 +62,7 @@ class Config(object):
                 self._optimizer = self.opt(self.learning_rate)
                 self._curr_label_loss = True
                 self._L2loss = args.l2
+                self.wce = args.wce
 
         class Data_sets(object):
             def __init__(self, args):
@@ -88,6 +89,7 @@ class Config(object):
         self.label_fold_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/labels/'+ str(self.train_percent) + '/' + str(self.train_fold) + '/'
         self.label_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/labels.npy'
         self.features_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/features.npy'
+        self.adj_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/adjmat.mat'
         #Logs and checkpoints to be stored in the code directory
         self.project_prefix_path = self.codebase_root_path+ self.project_name+'/'
 
