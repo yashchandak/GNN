@@ -4,7 +4,7 @@ import sys, os, shutil
 class Config():
 
     max_epochs = 10000 #Number of steps to run trainer
-    val_epochs_freq = 25  #Validation frequence    
+    val_epochs_freq = 25  #Validation frequence
     save_epochs_after= 1 #Model save frequency
     retrain = True
     #earlystopping hyperparametrs
@@ -14,7 +14,7 @@ class Config():
     
     def __init__(self, dataset, embed_file):
         self.root_path = '/home/priyesh/Desktop/Codes/Sample_Run/'
-        self.project_name = 'Seq/'
+        self.project_name = 'our_DCI/'
         self.logs_d = '/Logs/'
 
 
@@ -31,9 +31,9 @@ class Config():
 
         self.metrics = ['coverage','average_precision','ranking_loss','micro_f1','macro_f1','micro_precision',
                         'macro_precision','micro_recall','macro_recall','p@1','p@3','p@5','hamming_loss','cross_entropy', 'accuracy']
-        self.training_percents = [25]
+        self.training_percents = [3,4,5,6,7,8,9]
         self.threshold = False
-        self.num_shuffles = [1,2,3,4,5]
+        self.num_shuffles = [0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
 	
         self.init2()
 
@@ -44,7 +44,7 @@ class Config():
 
         self.directory   = self.root_path + 'Datasets/' + self.dataset
         self.label_dir  = self.directory + 'labels.npy'
-        self.results_folder = self.root_path + self.project_name + self.dataset + 'Results/'
+        self.results_folder = self.root_path + self.project_name # + self.dataset + 'Results/'
 
     def check_n_create(self, path):
         if not os.path.exists(path):

@@ -43,7 +43,7 @@ class Config(object):
 
         self.metrics = ['coverage', 'average_precision', 'ranking_loss', 'micro_f1', 'macro_f1', 'micro_precision',
                    'macro_precision', 'micro_recall', 'macro_recall', 'p@1', 'p@3', 'p@5', 'hamming_loss',
-                   'cross-entropy', 'accuracy']
+                   'bae', 'cross-entropy', 'accuracy']
 
         class Solver(object):
             def __init__(self, args):

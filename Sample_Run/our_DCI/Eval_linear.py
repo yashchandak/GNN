@@ -61,9 +61,9 @@ def evaluate(cfg):
             print ("Micro: ",numpy.mean(micro), "  Accuracy: ",numpy.mean(acc))
             print ('-------------------')
 
-        utils.write_results(cfg, all_results)
+            utils.write_results(cfg, all_results)
 
 if __name__ == "__main__":
-    con  = Config('cora/','/home/priyesh/Desktop/Codes/Sample_Run/Datasets/cora/features.npy')
+    con  = Config('facebook/','/home/priyesh/Desktop/Codes/Sample_Run/Datasets/facebook/features.npy')
     evaluate(con)
 

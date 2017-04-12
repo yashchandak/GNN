@@ -75,6 +75,15 @@ def bipartition_scores(labels,predictions):
   bipartiation = np.asarray([micro_precision, micro_recall, micro_f1,macro_precision, macro_recall, macro_f1])
   return bipartiation
 
+def BAE(labels, predictions):
+
+    abs_error = (1-predictions)*labels #consider error only for true classes
+    freq = np.sum(labels, axis=0) + 1e-15#count the frequency of each label
+    num_labels = np.shape(labels)[1]
+    bae = np.sum(np.sum(abs_error, axis=0)/freq)/num_labels
+    #print(bae, np.sum(abs_error, axis=0), freq, num_labels)
+    return bae
+
 def evaluate(predictions, labels, threshold):
   """Evaluate the quality of the logits at predicting the label.
   Args:
@@ -110,7 +119,8 @@ def evaluate(predictions, labels, threshold):
       pos = predictions[i].argsort()
       predictions[i].fill(0)
       predictions[i][pos[-int(k):]] = 1
-      
+
+  bae = BAE(labels, predictions)  # calculate BAE with probabilities, not with binarized predictions
   #labels = labels.astype(int)
   coverage= coverage_error(labels, predictions)
   #print(labels[:10], predictions[:10])
@@ -118,9 +128,8 @@ def evaluate(predictions, labels, threshold):
   ranking_loss = label_ranking_loss(labels, predictions)
   pak = patk(predictions, labels)
   ham_loss = hamming_loss(labels, predictions)
-  
   micro_precision, micro_recall, micro_f1,macro_precision, macro_recall, macro_f1 = bipartition_scores(labels, predictions)
   
-  performance = np.asarray([coverage,average_precision,ranking_loss,micro_f1,macro_f1,micro_precision,micro_recall,macro_precision,macro_recall, pak[0], pak[1], pak[2], ham_loss,cross_entropy, accuracy])
+  performance = np.asarray([coverage,average_precision,ranking_loss,micro_f1,macro_f1,micro_precision,micro_recall,macro_precision,macro_recall, pak[0], pak[1], pak[2], ham_loss,bae, cross_entropy, accuracy])
   #print ("Performance: " , performance)
   return performance

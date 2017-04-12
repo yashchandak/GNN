@@ -210,7 +210,7 @@ class RNNLM_v1(object):
         summary_writer.add_summary(summary_str, step)
         summary_writer.flush()
 
-    def run_epoch(self, sess, data, train_op=None, summary_writer=None, verbose=50):
+    def run_epoch(self, sess, data, train_op=None, summary_writer=None, verbose=1):
         #Optimize the objective for one entire epoch via mini-batches
         
         if not train_op:
@@ -222,12 +222,11 @@ class RNNLM_v1(object):
             keep_prob_out = self.config.mRNN._keep_prob_out
 
         total_loss, label_loss = [], []
-        gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy = [],[], [], [], [], []
+        gr_H, gr_I, gr_LI, f1_micro, f1_macro, accuracy, bae = [],[], [], [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
         for step, (input_batch, input_batch2, seq, label_batch, tot, lengths, mask) in enumerate(
                 self.dataset.next_batch(data, self.config.batch_size, shuffle=True)):
-
             # print("\n\n\nActualLabelCount: ", np.shape(input_batch), np.shape(input_batch2), np.shape(label_batch), np.shape(seq))
             feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch)
             feed_dict[self.keep_prob_in] = keep_prob_in
@@ -262,14 +261,15 @@ class RNNLM_v1(object):
                     f1_micro.append(metrics[3])
                     f1_macro.append(metrics[4])
                     accuracy.append(metrics[-1])
-                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : gr_H = %0.12f : gr_I = %0.12f : gr_LI = %0.12f'
+                    bae.append(metrics[-3])
+                print('%d/%d : label = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : bae = %0.3f : gr_H = %0.12f : gr_I = %0.12f : gr_LI = %0.12f'
                       % (step, tot, np.mean(label_loss), np.mean(f1_micro),
-                         np.mean(accuracy), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
+                         np.mean(accuracy), np.mean(bae), np.mean(gr_H), np.mean(gr_I), np.mean(gr_LI)), end="\r")
                 sys.stdout.flush()
 
         if verbose:
             sys.stdout.write('\r')
-        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy)
+        return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy), np.mean(bae)
 
     def fit(self, sess, epoch, patience, validation_loss):
         # Controls how many time to optimize the function before making next label prediction
@@ -278,11 +278,11 @@ class RNNLM_v1(object):
 
         for i in range(self.config.max_outer_epochs): #change this
             start_time = time.time()
-            average_loss, tr_micro, tr_macro, tr_accuracy = self.run_epoch(sess, data='train', train_op=self.train,
+            average_loss, tr_micro, tr_macro, tr_accuracy, bae = self.run_epoch(sess, data='train', train_op=self.train,
                                                                            summary_writer=self.summary_writer_train)
             duration = time.time() - start_time
 
-            print("Tr_micro: %f :: Tr_macro: %f :: Tr_accuracy: %f :: Time: %f"%(tr_micro, tr_macro, tr_accuracy, duration))
+            print("Tr_micro: %f :: Tr_macro: %f :: Tr_accuracy: %f :: Tr_bae: %f  :: Time: %f"%(tr_micro, tr_macro, tr_accuracy, bae, duration))
             if (epoch % self.config.val_epochs_freq == 0):
                 # Get new estimates of unlabeled validation nodes
 
@@ -296,7 +296,8 @@ class RNNLM_v1(object):
 
                 pred_labels = self.dataset.get_update_cache()
                 metrics = self.predict_results(sess, data='val', preds=pred_labels)  # evaluate performance for validation set
-                val_micro, val_macro, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-2], metrics[-1]
+                val_micro, val_macro, val_loss, val_accuracy, bae = metrics[3], metrics[4], metrics[-2], metrics[-1], metrics[-3]
+                val_loss = bae
 
                 print('\nEpoch %d: tr_loss = %.2f, val_loss %.2f || tr_micro = %.2f, val_micro = %.2f || tr_acc = %.2f, val_acc = %.2f  (%.3f sec)'
                         %(epoch, average_loss, val_loss, tr_micro, val_micro, tr_accuracy, val_accuracy, duration))

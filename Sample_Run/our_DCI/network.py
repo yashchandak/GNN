@@ -242,8 +242,8 @@ class Network(object):
 
             else:
                 self.label_preds = tf.nn.softmax(predictions)
-                cross_loss = tf.log(self.label_preds + 1e-10)
-                cross_entropy_label = -1*tf.reduce_sum(mask*tf.reduce_sum(wce*labels*cross_loss,1))/tf.reduce_sum(mask)
+                cross_loss = labels*tf.log(self.label_preds + 1e-10)
+                cross_entropy_label = -1*tf.reduce_sum(mask*tf.reduce_sum(wce*cross_loss,1))/tf.reduce_sum(mask)
 
             tf.add_to_collection('total_loss', cross_entropy_label)
 
