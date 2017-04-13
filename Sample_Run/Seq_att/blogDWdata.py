@@ -74,6 +74,7 @@ class DataSet(object):
         # [!!!IMP!!]Assert no overlap between test/val/train nodes
 
         self.change = 0
+        self.path_pred_variance = {}
         self.label_cache, self.update_cache = {0:self.all_labels[0]}, {}
         self.wce = self.get_wce()
 
@@ -130,12 +131,17 @@ class DataSet(object):
         #Average all the predictions made for the corresponding nodes and reset cache
         alpha = self.cfg.solver.label_update_rate
 
+        update_no = len(self.path_pred_variance.items())
+        self.path_pred_variance[update_no] = {}
+
         if len(self.label_cache.items()) <= 1: alpha =1
 
         for k, v in self.update_cache.items():
             old = self.label_cache.get(k, self.label_cache[0])
-            new = (1-alpha)*old + alpha*(v[0]/v[1])
+            cur = v[0]/v[1]
+            new = (1-alpha)*old + alpha*cur
             self.change += np.mean((new - old) **2)
+            self.path_pred_variance[update_no][k] = cur
             self.label_cache[k] =  new
 
         print("\nChange in label: :", np.sqrt(self.change/self.cfg.data_sets._len_vocab)*100)

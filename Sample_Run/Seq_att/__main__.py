@@ -30,6 +30,7 @@ class RNNLM_v1(object):
         self.add_placeholders()
         self.arch = self.add_network(config)
         self.change = 0
+        self.fluctuations = {}
 
         self.rnn_outputs = self.arch.predict(self.data_placeholder, self.data_placeholder2,
                                              self.keep_prob_in, self.keep_prob_out,self.label_in)
@@ -129,7 +130,7 @@ class RNNLM_v1(object):
             labels_pred.append(self.dataset.label_cache[node])
 
         if return_labels:
-            return labels_pred
+            return perf.evaluate(labels_pred, labels_orig, 0), labels_pred
         else:
             return perf.evaluate(labels_pred, labels_orig, 0)
 
@@ -342,7 +343,10 @@ class RNNLM_v1(object):
                     print('best step %d' % (best_step))
 
                 # Get predictions for test nodes
-                self.print_metrics(self.predict_results(sess, data='test'))
+                test_metrics = self.predict_results(sess, data='test')
+                self.print_metrics(test_metrics)
+
+                self.fluctuations[epoch] = {'val':metrics, 'test':test_metrics}
 
             else:
                 print('Epoch %d: loss = %.2f (%.3f sec)' % (epoch, average_loss, duration))
@@ -375,11 +379,11 @@ class RNNLM_v1(object):
         self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()
 
         self.bootstrap(sess, data='all', label_in=label_in)  # Get new estimates of unlabeled nodes
-        metrics = self.predict_results(sess, data='test')
+        metrics, preds = self.predict_results(sess, data='test', return_labels=True)
 
         self.print_metrics(metrics)  # Get predictions for test nodes
 
-        return metrics, self.attn_values
+        return metrics, self.attn_values, preds, self.fluctuations, self.dataset.path_pred_variance
 
 
 ########END OF CLASS MODEL#####################################
@@ -410,8 +414,8 @@ def train_DNNModel(cfg):
         model, sess = init_Model(config)
         with sess:
             model.add_summaries(sess)
-            metrics, attn_values = model.fit_outer(sess)
-            return metrics, attn_values
+            metrics, attn_values, preds, fluctuations, path_pred_variance = model.fit_outer(sess)
+            return metrics, attn_values, preds, fluctuations, path_pred_variance
 
 
 def get_argumentparser():
@@ -419,12 +423,13 @@ def get_argumentparser():
     parser.add_argument("--path", default='/home/priyesh/Desktop/Codes/Sample_Run/', help="Base path for the code")
     parser.add_argument("--project", default='Seq_att', help="Project folder")
     parser.add_argument("--dataset", default='cora', help="Dataset to evluate")
+    parser.add_argument("--labels", default='labels', help="Label type")
     parser.add_argument("--percent", default=20, help="Training percent")
     parser.add_argument("--folds", default='1_2_3_4_5', help="Training folds")
     parser.add_argument("--retrain", default=True, help="Retrain flag")
     parser.add_argument("--debug", default=False, help="Debug flag")
-    parser.add_argument("--save_after", default=0, help="Debug flag", type=int)
-    parser.add_argument("--val_freq", default=1, help="Debug flag", type=int)
+    parser.add_argument("--save_after", default=0, help="Save after epochs", type=int)
+    parser.add_argument("--val_freq", default=1, help="Validation frequency", type=int)
     parser.add_argument("--bin_upd", default=0, help="Binary updates for labels", type=int)
     parser.add_argument("--max_depth", default=999, help="Maximum path depth", type=int)
     parser.add_argument("--max_outer", default=100, help="Maximum outer epoch", type=int)
@@ -489,10 +494,14 @@ def main():
         #print("=====Configurations=====\n", cfg.__dict__)
 
         # All set... GO!
-        metrics, attention[idx] = train_DNNModel(cfg)
-        all_results[cfg.train_percent][meta_param[('train_fold',)][idx]] = metrics
+        metrics, attention[idx], preds, fluctuations, path_pred_variance = train_DNNModel(cfg)
+        all_results[cfg.train_percent][cfg.train_fold] = metrics
         print('\n\n ===== Attention \n', attention[idx])
         print('\n\n ===================== \n\n')
+
+        np.save(cfg.results_folder+'labels-'+str(cfg.train_percent)+'-'+str(cfg.train_fold), preds)
+        np.save(cfg.results_folder+'metrics-fluctuations-'+str(cfg.train_percent)+'-'+str(cfg.train_fold), fluctuations)
+        np.save(cfg.results_folder+'path-variance-'+str(cfg.train_percent)+'-'+str(cfg.train_fold), path_pred_variance)
 
         write_results(cfg, all_results)
         if cfg.mRNN.attention:

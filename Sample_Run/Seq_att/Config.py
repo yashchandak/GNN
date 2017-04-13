@@ -68,6 +68,7 @@ class Config(object):
             def __init__(self, args):
                 self.reduced_dims = args.reduce
                 self.binary_label_updates = args.bin_upd
+                self.label_type = args.labels
 
         class RNNArchitecture(object):
             def __init__(self, args):
@@ -86,7 +87,7 @@ class Config(object):
 
     def init2(self):
         self.walks_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/walks/walks_80.txt'
-        self.label_fold_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/labels/'+ str(self.train_percent) + '/' + str(self.train_fold) + '/'
+        self.label_fold_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/'+self.data_sets.label_type+'/'+ str(self.train_percent) + '/' + str(self.train_fold) + '/'
         self.label_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/labels.npy'
         self.features_dir = self.codebase_root_path + 'Datasets/' + self.dataset_name+'/features.npy'
         #Logs and checkpoints to be stored in the code directory
