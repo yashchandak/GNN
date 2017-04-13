@@ -103,7 +103,7 @@ class DataSet(object):
         if self.cfg.solver.wce:
             valid = self.train_nodes + self.val_nodes
             tot = np.dot(valid, self.all_labels)
-            wce = 1 - tot*1.0/np.sum(tot)
+            wce = 1/(len(tot) * (tot*1.0/np.sum(tot)))
         else:
             wce = [1]*self.all_labels.shape[1]
 

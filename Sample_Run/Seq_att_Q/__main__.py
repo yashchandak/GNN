@@ -517,10 +517,11 @@ def train_DNNModel(cfg):
             metrics, attn_values = model.fit_outer(sess)
             return metrics, attn_values
 
+
 def get_argumentparser():
     parser = argparse.ArgumentParser()
     parser.add_argument("--path", default='/home/priyesh/Desktop/Codes/Sample_Run/', help="Base path for the code")
-    parser.add_argument("--project", default='Seq_att_Q', help="Project folder")
+    parser.add_argument("--project", default='Seq_att', help="Project folder")
     parser.add_argument("--dataset", default='cora', help="Dataset to evluate")
     parser.add_argument("--percent", default=20, help="Training percent")
     parser.add_argument("--folds", default='1_2_3_4_5', help="Training folds")
@@ -528,34 +529,34 @@ def get_argumentparser():
     parser.add_argument("--debug", default=False, help="Debug flag")
     parser.add_argument("--save_after", default=0, help="Debug flag", type=int)
     parser.add_argument("--val_freq", default=1, help="Debug flag", type=int)
-    parser.add_argument("--bin_upd", default=False, help="Binary updates for labels", type=bool)
+    parser.add_argument("--bin_upd", default=0, help="Binary updates for labels", type=int)
     parser.add_argument("--max_depth", default=999, help="Maximum path depth", type=int)
     parser.add_argument("--max_outer", default=100, help="Maximum outer epoch", type=int)
     parser.add_argument("--pat", default=3, help="Patience", type=int)
     parser.add_argument("--pat_inc", default=2, help="Patience Increase", type=int)
     parser.add_argument("--folder_suffix", default='', help="folder name suffix")
 
-    parser.add_argument("--batch_size", default=100, help="Batch size", type=int)
+    parser.add_argument("--batch_size", default=32, help="Batch size", type=int)
     parser.add_argument("--boot_epochs", default=1, help="Epochs for first bootstrap", type=int)
-    parser.add_argument("--boot_reset", default=True, help="Reset weights after first bootstrap", type=bool)
-    parser.add_argument("--concat", default=False, help="Concat attribute to hidden state", type=bool)
-    parser.add_argument("--wce", default=True, help="Wrighted cross entropy", type=bool)
+    parser.add_argument("--boot_reset", default=0, help="Reset weights after first bootstrap", type=int)
+    parser.add_argument("--concat", default=0, help="Concat attribute to hidden state", type=int)
+    parser.add_argument("--wce", default=0, help="Wrighted cross entropy", type=int)
     parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
     parser.add_argument("--pat_improve", default=0.9999, help="Improvement threshold for patience", type=float)
     parser.add_argument("--lr", default=0.001, help="Learning rate", type=float)
-    parser.add_argument("--lu", default=0.2, help="Label update rate", type=float)
+    parser.add_argument("--lu", default=0.75, help="Label update rate", type=float)
     parser.add_argument("--l2", default=1e-3, help="L2 loss", type=float)
     parser.add_argument("--opt", default='adam', help="Optimizer type (adam, rmsprop, sgd)")
-    parser.add_argument("--cell", default='LSTMgated', help="RNN cell (LSTM, myLSTM, LSTMgated, GRU)")
+    parser.add_argument("--cell", default='LSTM', help="RNN cell (LSTM, myLSTM, GRU)")
     parser.add_argument("--reduce", default=0, help="Reduce Attribute dimensions to", type=int)
     parser.add_argument("--hidden", default=16, help="Hidden units", type=int)
     parser.add_argument("--attention", default=0, help="Attention module (0: no, 1: HwC, 2: tanh(wH + wC))", type=int)
     parser.add_argument("--drop_in", default=0.5, help="Dropout for input", type=float)
     parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer", type=float)
 
-    parser.add_argument("--ssl", default=False, help="Semi-supervised loss", type=bool)
-    parser.add_argument("--gating", default=False, help="RNN gating", type=bool)
-    parser.add_argument("--inner_converge", default=False, help="Convergence during bootstrap", type=bool)
+    parser.add_argument("--ssl", default=0, help="Semi-supervised loss", type=int)
+    parser.add_argument("--gating", default=0, help="RNN gating", type=int)
+    parser.add_argument("--inner_converge", default=0, help="Convergence during bootstrap", type=int)
 
     return parser
 

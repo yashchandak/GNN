@@ -101,9 +101,9 @@ class DataSet(object):
 
     def get_wce(self):
         if self.cfg.solver.wce:
-            valid = self.train_nodes + self.val_nodes
+            valid = self.train_nodes #+ self.val_nodes
             tot = np.dot(valid, self.all_labels)
-            wce = 1 - tot*1.0/np.sum(tot)
+            wce = 1/(len(tot) * (tot*1.0/np.sum(tot)))
         else:
             wce = [1]*self.all_labels.shape[1]
 
@@ -189,7 +189,7 @@ class DataSet(object):
 
         return nodes
 
-    @async_prefetch
+    #@async_prefetch
     def next_batch(self, dataset, batch_size, shuffle=True):
 
         nodes = np.where(self.get_nodes(dataset))[0]
@@ -201,8 +201,11 @@ class DataSet(object):
         count = sorted(count, key = lambda item:item[1])
         count = np.array(count)
         buck_size = len(nodes)//buckets
+        if len(nodes)%buck_size != 0:
+            buckets += 1
+
         grouped = {}
-        for i in range(buckets+1):
+        for i in range(buckets):
             extra = max(0, (i+1)*buck_size - len(nodes)) #Increase the size of last bucket to accomodate left-over nodes
             temp = count[i*buck_size: (i+1)*buck_size + extra]
             maxi = np.max(temp[:,1])
@@ -213,7 +216,7 @@ class DataSet(object):
                 indices = np.random.permutation(len(v[0]))
                 grouped[k] = [v[0][indices], v[1]]
 
-        tot = np.ceil(buck_size*1.0/batch_size)*buckets #Total number of batches
+        tot = buck_size*buckets/batch_size #Total number of batches
         for vertices, maxi in grouped.values():
             #print("Vertices; ",vertices)
             maxi += 1 #number of neighbors + itself
@@ -221,7 +224,6 @@ class DataSet(object):
                 lengths = []
                 #additional dummy entries in the batch to make batch size constant
                 dummy = max(0, (idx + batch_size) -len(vertices))
-
                 mask = [1]*batch_size
                 if dummy: mask[-dummy:] = [0]*dummy
 
