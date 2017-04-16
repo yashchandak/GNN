@@ -263,7 +263,7 @@ class Network(object):
 
         tvs = tf.trainable_variables()
         accum_grads = [tf.Variable(tf.zeros_like(tv.initialized_value()), trainable=False) for tv in tvs]
-        reset_op = [v.assign(tf.zeros_like(tv)) for v in accum_grads]
+        reset_op = [v.assign(tf.zeros_like(v)) for v in accum_grads]
 
         gvs = tf.gradients(loss, tvs) #compute gradients
         # gvs = optimizer.compute_gradients(loss, tvs)

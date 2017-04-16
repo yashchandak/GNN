@@ -5,7 +5,7 @@ python __main__.py  --path /home/priyesh/Desktop/Codes/Sample_Run/ \
                     --folds 1_2_3_4_5 \
                     --dataset cora \
                     --reduce 0 \
-                    --gradients 1 \
+                    --gradients 0 \
                     --hidden 16 \
                     --wce 1 \
                     --concat 0 \
@@ -14,7 +14,7 @@ python __main__.py  --path /home/priyesh/Desktop/Codes/Sample_Run/ \
                     --lr 0.001 \
                     --opt adam \
                     --l2 0.001 \
-                    --boot_epochs 4 \
+                    --boot_epochs 20 \
                     --drop_in 0.5 \
                     --drop_out 0.75 \
                     --cell LSTM \

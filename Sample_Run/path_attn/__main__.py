@@ -61,7 +61,7 @@ class RNNLM_v1(object):
         start = time.time()
         load_time, run_time, update_time = 0, 0, 0
         for step, (raw_inp, input_batch, input_batch2, seq, counts, label_batch, lengths, tot) in enumerate(
-                self.dataset.next_batch_same(data, node_count = 10)):
+                self.dataset.next_batch_same(data)):
             #print(step)
             t = time.time()
             load_time += t - start
@@ -85,7 +85,7 @@ class RNNLM_v1(object):
 
             start = 0
             for idx, count in enumerate(counts):
-                new = pred_labels #np.mean(pred_labels[start:start+count], axis=0)
+                new = pred_labels[0] #np.mean(pred_labels[start:start+count], axis=0)
                 old = np.array(self.dataset.label_cache.get(seq[idx], list(self.dataset.all_labels[0])))
                 updated = (1-alpha)*old + alpha*new
                 self.change += np.mean((updated - old) ** 2)
@@ -452,7 +452,7 @@ def get_argumentparser():
     parser.add_argument("--bin_upd", default=0, help="Binary updates for labels", type=int)
     parser.add_argument("--gradients", default=0, help="Print gradients of trainable variables", type=int)
     parser.add_argument("--max_depth", default=999, help="Maximum path depth", type=int)
-    parser.add_argument("--max_outer", default=1, help="Maximum outer epoch", type=int)
+    parser.add_argument("--max_outer", default=2, help="Maximum outer epoch", type=int)
     parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
     parser.add_argument("--pat", default=3, help="Patience", type=int)
     parser.add_argument("--pat_inc", default=2, help="Patience Increase", type=int)
