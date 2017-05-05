@@ -38,17 +38,15 @@ class RNNLM_v1(object):
         self.enqueue_op = self.Q.enqueue_many([self.x_attr_placeholder, self.x_labels_placeholder, self.y_label_placeholder,
                                                self.x_lengths_placeholder, self.node_id_placeholder])
         self.x_attr, self.x_labels, self.y_labels, self.x_lengths, self.node_id  = self.Q.dequeue()
-        #self.x_attr = tf.Print(self.x_attr, [tf.shape(self.x_attr), tf.shape(self.x_labels), tf.shape(self.y_labels), tf.shape(self.x_lengths), tf.shape(self.node_id)], message='TF SHAPES:')
 
-        self.rnn_outputs, context = self.arch.predict(self.x_attr, self.x_labels, self.keep_prob_in, self.keep_prob_out, self.x_lengths)
+        self.rnn_outputs, context, x_attr_reduced = self.arch.predict(self.x_attr, self.x_labels, self.keep_prob_in, self.keep_prob_out, self.x_lengths)
         self.attn_outputs= self.arch.attention(self.rnn_outputs, context = context)
-        self.outputs     = self.arch.projection(self.attn_outputs, self.x_attr, self.x_labels)
+        self.outputs     = self.arch.projection(self.attn_outputs, x_attr_reduced, self.x_labels)
         self.loss        = self.arch.loss(self.outputs, self.y_labels, self.wce_placeholder)
         self.optimizer   = self.config.solver._optimizer
         train            = self.arch.custom_training(self.loss, self.optimizer, self.config.batch_size) #self.arch.training(self.loss, self.optimizer)
         self.reset_grads, self.accumulate_op, self.update_op  = train
 
-        self.path_pred_variance = {}
         self.saver        = tf.train.Saver()
         self.summary      = tf.summary.merge_all()
         self.step_incr_op = self.arch.global_step.assign(self.arch.global_step + 1)
@@ -59,14 +57,12 @@ class RNNLM_v1(object):
             feed_dict = self.create_feed_dict([input_batch], [input_batch2], [label], [x_lengths], [node_id])
             sess.run(self.enqueue_op, feed_dict=feed_dict)
 
-    def bootstrap(self, sess, data):
+    def bootstrap(self, sess, data, update=True):
         alpha = self.config.solver.label_update_rate
         if len(self.dataset.label_cache.items()) <= 1: alpha =1.0 #First update
         depth_sum, attn_sum = 0, 0
 
         update_cache = {}
-        ctr = len(self.path_pred_variance.items())
-        self.path_pred_variance[ctr] = {}
 
         start = time.time()
         load_time, run_time, update_time = 0, 0, 0
@@ -80,7 +76,7 @@ class RNNLM_v1(object):
 
         for step in range(tot):
             feed_dict = {self.keep_prob_in: 1, self.keep_prob_out: 1}
-            node_id, attn_values, pred_labels = sess.run([self.node_id, self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
+            node_id, self.attn_values, pred_labels = sess.run([self.node_id, self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
             t2 = time.time()
             run_time += t2 - start
 
@@ -88,7 +84,6 @@ class RNNLM_v1(object):
             old = np.array(self.dataset.label_cache.get(node_id, self.dataset.all_labels[0]))
             updated = (1-alpha)*old + alpha*new
             self.change += np.mean((updated - old) ** 2)
-            self.path_pred_variance[ctr][node_id] = new
             update_cache[node_id] = updated #store all the updates in temporary dict
 
             start = time.time()
@@ -100,43 +95,33 @@ class RNNLM_v1(object):
         #print("Depth sums: ", depth_sum)
         #print("Attention: ", self.attn_values)
 
-        print("\nChange in label: :", np.sqrt(self.change/self.config.data_sets._n_nodes)*100)
+        #print("Change in label: :", np.sqrt(self.change/self.config.data_sets._n_nodes)*100)
         self.change = 0
 
-        print("Step: %d :: Load time: %f :: Run time: %f :: Update time: %f"%(step, load_time, run_time, update_time))
+        #print("Step: %d :: Load time: %f :: Run time: %f :: Update time: %f"%(step, load_time, run_time, update_time))
+
         #Assign the predicted labels to label_cache
-        self.dataset.label_cache = update_cache
+        if update:
+            print("========== Label updated ============= \n")
+            self.dataset.label_cache = update_cache
 
+        return update_cache
 
-    def bootstrap2(self, sess, data):
-        for step, (input_batch, input_batch2, seq, label_batch, tot) in enumerate(
-                self.dataset.next_batch(data, batch_size=512, shuffle=False)):
-            feed_dict = self.create_feed_dict(input_batch, input_batch2, label_batch)
-            feed_dict[self.keep_prob_in] = 1
-            feed_dict[self.keep_prob_out] = 1
-            # feed_dict[self.arch.initial_state] = state
-            #pred_labels = sess.run([self.arch.label_preds], feed_dict=feed_dict)
-            attn_values, pred_labels = sess.run([self.arch.attn_vals, self.arch.label_preds], feed_dict=feed_dict)
-            print(attn_values.shape, pred_labels.shape)
-            self.dataset.accumulate_label_cache(pred_labels, seq)
+    def predict_results(self, sess, data, return_labels=False, preds=None):
+        if preds == None:
+            preds = self.dataset.label_cache
 
-            #print('%d/%d'%(step,tot), end="\r")
-            #sys.stdout.flush()
-
-        self.dataset.update_label_cache()
-        self.path_pred_variance = self.dataset.path_pred_variance
-
-    def predict_results(self, sess, data, return_labels=False):
         labels_orig, labels_pred = [], []
         for node in np.where(self.dataset.get_nodes(data))[0]:
             # print('====',self.dataset.label_cache[node])
             labels_orig.append(self.dataset.all_labels[node])
-            labels_pred.append(self.dataset.label_cache[node])
+            labels_pred.append(preds[node])
 
         if return_labels:
             return perf.evaluate(labels_pred, labels_orig, 0), labels_pred
         else:
             return perf.evaluate(labels_pred, labels_orig, 0)
+
 
     def load_data(self):
         # Get the 'encoded data'
@@ -147,11 +132,6 @@ class RNNLM_v1(object):
         self.config.data_sets._n_nodes = self.dataset.n_nodes
         self.config.num_steps = self.dataset.diameter + 1
         print('--------- Project Path: ' + self.config.codebase_root_path + self.config.project_name)
-
-        #debug = self.config.debug
-        #if debug:
-        #    print('##############--------- Debug mode [NOT IMPLEMENTED] ')
-        #    num_debug = (self.config.num_steps + 1) * 128
 
     def add_placeholders(self):
         #0th axis should have same size for all tensord in the Queue
@@ -216,25 +196,16 @@ class RNNLM_v1(object):
             feed_dict = {self.keep_prob_in: keep_prob_in, self.keep_prob_out: keep_prob_out,
                          self.wce_placeholder: self.dataset.wce}
             a,b,c,d,e = sess.run([self.x_attr, self.x_labels, self.y_labels, self.x_lengths, self.node_id ], feed_dict=feed_dict)
-            print("Data: ",a,b,c,d,e)
+            #print("Data: ", a,b,c,d,e)
 
 
         coord.request_stop()
         coord.join(threads)
 
-    def run_epoch(self, sess, data, train_op=None, summary_writer=None, verbose=50):
+    def run_epoch(self, sess, data, train_op, summary_writer=None, verbose=50):
         # Optimize the objective for one entire epoch via mini-batches
 
-        if not train_op:
-            train_op = tf.no_op()
-            keep_prob_in = 1
-            keep_prob_out = 1
-        else:
-            keep_prob_in = self.config.mRNN._keep_prob_in
-            keep_prob_out = self.config.mRNN._keep_prob_out
-
-        total_loss = []
-        gradients, f1_micro, f1_macro, accuracy, bae = [], [], [], [], []
+        total_loss, gradients, f1_micro, f1_macro, accuracy, bae = [], [], [], [], [], []
         # Sets to state to zero for a new epoch
         # state = self.arch.initial_state.eval()
 
@@ -250,7 +221,8 @@ class RNNLM_v1(object):
 
         while step < tot:
             step += 1
-            feed_dict = {self.keep_prob_in: keep_prob_in, self.keep_prob_out: keep_prob_out,
+            feed_dict = {self.keep_prob_in: self.config.mRNN._keep_prob_in,
+                         self.keep_prob_out: self.config.mRNN._keep_prob_out,
                          self.wce_placeholder: self.dataset.wce}
 
             # Writes loss summary @last step of the epoch
@@ -278,22 +250,22 @@ class RNNLM_v1(object):
                 f1_macro.append(metrics[4])
                 accuracy.append(metrics[-1])
                 bae.append(metrics[-3])
-                print('%d/%d : loss = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : bae = %0.3f'
-                       % (step, tot, np.mean(loss_value), np.mean(f1_micro), np.mean(accuracy), np.mean(bae)), end="\r")
+                #print('%d/%d : loss = %0.4f : micro-F1 = %0.3f : accuracy = %0.3f : bae = %0.3f'
+                #       % (step, tot, np.mean(loss_value), np.mean(f1_micro), np.mean(accuracy), np.mean(bae)))#, end="\r")
 
 
             if step % self.config.batch_size == 0 or step == tot:
                 # Print Gradients for each trainable weight
                 if self.config.solver.gradients:
                     print("%d/%d :: " % (step, tot), end="")
-                    for var, val in zip(['-'.join(k.name.split('/')[-4:]) for k in tf.trainable_variables()],
+                    for var, val in zip(['-'.join(k.name.split('/')[-2:]) for k in tf.trainable_variables()],
                                         np.mean(gradients, axis=0)):
                         print("%s :: %.8f  " % (var, val/self.config.batch_size), end="")
                     print("\n")
-                    sys.stdout.flush()
+                sys.stdout.flush()
 
                 # Update gradients after batch_size or at the end of the current epoch\
-                print("Gradients updated at step: ", step)
+                #print("Gradients updated at step: %d\n"%(step))
                 sess.run([self.update_op])
                 sess.run([self.reset_grads])
 
@@ -302,120 +274,104 @@ class RNNLM_v1(object):
 
         return np.mean(total_loss), np.mean(f1_micro), np.mean(f1_macro), np.mean(accuracy), np.mean(bae)
 
-    def fit(self, sess, inc=1):
+    def fit(self, sess, epoch, best_val_loss):
         # Controls how many time to optimize the function before making next label prediction
-        for step in range(max(self.config.max_inner_epochs, inc)):
-            average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae = self.run_epoch(sess, data='train',
-                                                                           train_op=self.accumulate_op,
+        patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
+        improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
+        patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
+
+        for i in range(self.config.max_outer_epochs): #change this
+            start_time = time.time()
+            average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae = self.run_epoch(sess, data='train', train_op=self.accumulate_op,
                                                                            summary_writer=self.summary_writer_train)
-            if inc > 1:
-                print("Epoch %d : Tr_micro = %0.3f : Tr_macro = %0.3f : Tr_accuracy = %0.3f"%(step, tr_micro, tr_macro, tr_accuracy))
-        # return last evaluated loasses
-        return average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae
+            duration = time.time() - start_time
+
+            #print("Tr_micro: %f :: Tr_macro: %f :: Tr_accuracy: %f :: Tr_bae: %f :: Time: %f"%(tr_micro, tr_macro, tr_accuracy, tr_bae, duration))
+            if (epoch % self.config.val_epochs_freq == 0):
+
+                s = time.time()
+                pred_labels = self.bootstrap(sess, data='val', update=False)
+                #print('Bootstrap time: ', time.time() - s)
+
+                #pred_labels = self.dataset.get_update_cache()
+                metrics = self.predict_results(sess, data='val', preds=pred_labels)  # evaluate performance for validation set
+                val_micro, val_macro, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-2], metrics[-1]
+                val_loss = 1-val_accuracy #using accuracy as stopping criteria instead of cross-loss
+
+                print('Epoch %d: tr_loss = %.2f, val_loss %.2f || tr_micro = %.2f, val_micro = %.2f || tr_acc = %.2f, val_acc = %.2f  (%.3f sec)'
+                        %(epoch, average_loss, val_loss, tr_micro, val_micro, tr_accuracy, val_accuracy, duration))
+
+                # Save model only if the improvement is significant
+                if (val_loss < best_val_loss * improvement_threshold):
+                    best_val_loss = val_loss
+                    self.saver.save(sess, self.config.ckpt_dir + 'last-best')
+
+                    patience = epoch + max(self.config.val_epochs_freq, patience_increase)
+                    print('best step %d\n' % (epoch))
+
+                if patience <= epoch:
+                    break
+
+            epoch +=1
+
+        return epoch, best_val_loss
 
     def fit_outer(self, sess):
         # define parametrs for early stopping early stopping
         max_epochs = self.config.max_outer_epochs
         patience = self.config.patience  # look as this many examples regardless
-        patience_increase = self.config.patience_increase  # wait this much longer when a new best is found
-        improvement_threshold = self.config.improvement_threshold  # a relative improvement of this much is considered significant
-
-        inc = self.config.boot_epochs  # override number of inner iterations for first bootstrap step
-        validation_loss = 1e6
         done_looping = False
-        step = 1
-        best_step = -1
+        epoch = 1
         flag = self.config.boot_reset
-        losses = []
+        outer_epoch = 1
         learning_rate = self.config.solver.learning_rate
-        # sess.run(self.init) #DO NOT DO THIS!! Doesn't restart from checkpoint
-        while (step <= max_epochs) and (not done_looping):
+        best_loss = 1e6
 
+        while (outer_epoch <= max_epochs) and (not done_looping):
             # sess.run([self.step_incr_op])
-            epoch = step  # self.arch.global_step.eval(session=sess)
-            print("------ Next iteration -----")
-            if step == 2 and flag: #reset after first bootstrap
-                print("=========Graph Weight reset==========\n\n\n")
+            # self.arch.global_step.eval(session=sess)
+            if outer_epoch == 2 and flag: #reset after first bootstrap
+                print("------ Graph Reset | First bootstrap done -----\n\n\n")
                 sess.run(self.init)  # reset all weights
                 flag = False
+                best_loss = 1e6 #reset beset loss; under assumption that model ALWAYS will do better with pseudo labels than without
 
-            print([v.name for v in tf.trainable_variables()])  # Just to monitor the trainable variables in tf graph
-            start_time = time.time()
+            print([v.name for v in tf.trainable_variables()], "\n")  # Just to monitor the trainable variables in tf graph
+
             # Fit the model to predict best possible labels given the current estimates of unlabeled values
-            average_loss, tr_micro, tr_macro, tr_accuracy, tr_bae = self.fit(sess, inc)
-            duration = time.time() - start_time
-            inc = self.config.max_inner_epochs  # reset inc
+            epoch, new_loss = self.fit(sess, epoch, best_loss)
+            self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))  # Restore the best parameters
+            outer_epoch +=1
 
-            if (epoch % self.config.val_epochs_freq == 0):
-                # Get new estimates of unlabeled validation nodes
-                # the actual inputs that resulted in this new result
-                old_labels = deepcopy(self.dataset.label_cache)
-
-                s = time.time()
-                self.bootstrap(sess, data='all')
-                print('Bootstrap time: ', time.time() - s)
-
-                metrics = self.predict_results(sess, data='val')  # evaluate performance for validation set
-                val_micro, val_macro, val_bae, val_loss, val_accuracy = metrics[3], metrics[4], metrics[-3], metrics[-2], metrics[-1]
-
-                print(
-                    '\nEpoch %d: tr_loss = %.2f, val_loss %.2f || tr_micro = %.2f, val_micro = %.2f || tr_acc = %.2f, val_acc = %.2f  || tr_bae = %.2f, val_bae = %.2f ||(%.3f sec)'
-                    % (epoch, average_loss, val_loss, tr_micro, val_micro, tr_accuracy, val_accuracy, tr_bae, val_bae, duration))
-
-                # Save model only if the improvement is significant
-                if (val_loss < validation_loss * improvement_threshold) and (epoch > self.config.save_epochs_after):
-                    # patience = max(patience, epoch * patience_increase)
-                    validation_loss = val_loss
-
-                    self.saver.save(sess, self.config.ckpt_dir + 'last-best')
-                    np.save(self.config.ckpt_dir + 'last-best_labels.npy', old_labels)
-
-                    best_step = epoch
-                    patience = epoch + max(self.config.val_epochs_freq, patience_increase)
-                    print('best step %d' % (best_step))
-
-                # Get predictions for test nodes
-                test_metrics = self.predict_results(sess, data='test')
-                self.print_metrics(test_metrics)
-
-                self.fluctuations[epoch] = {'val':metrics, 'test':test_metrics}
-
-            else:
-                print('Epoch %d: loss = %.2f (%.3f sec)' % (epoch, average_loss, duration))
-
-            """
-            #Uncomment this if weights are NOT re-initialized after bootstrap for new labels
-            #If weights are re-initialised then we can't reduce the learning rate immendiately
-            """
-
-            if patience <= epoch:
-                # config.val_epochs_freq = 2
-                learning_rate = learning_rate / 10
+            if new_loss >= best_loss:
+                learning_rate = learning_rate / 2
                 self.optimizer = self.config.solver.opt(learning_rate)
-                patience = epoch + max(self.config.val_epochs_freq, self.config.patience_increase)
                 print('--------- Learning rate dropped to: %f' % (learning_rate))
-
-                self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))
-                self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()
 
                 if learning_rate <= 0.000001:
                     print('Stopping by patience method')
                     done_looping = True
 
-            losses.append(average_loss)
-            step += 1
+            else:
+                self.bootstrap(sess, data='all', update=True)
+                best_loss = new_loss
+
+                # Get predictions for test nodes
+                test_metrics = self.predict_results(sess, data='test')
+                self.print_metrics(test_metrics)
+
+                #Additional book-kepping to correlate val vs test accuracies
+                val_metrics = self.predict_results(sess, data='val')
+                self.fluctuations[epoch] = {'val': val_metrics, 'test': test_metrics}
+
 
         # End of Training
+        #self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))  # restore the best parameters
 
-        self.saver.restore(sess, tf.train.latest_checkpoint(self.config.ckpt_dir))  # restore the best parameters
-        self.dataset.label_cache = np.load(self.config.ckpt_dir + 'last-best_labels.npy').item()
-
-        self.bootstrap(sess, data='all')  # Get new estimates of unlabeled nodes
-        metrics, preds = self.predict_results(sess, data='test', return_labels=True)
-
+        metrics = self.predict_results(sess, data='test')
         self.print_metrics(metrics)  # Get predictions for test nodes
 
-        return metrics, self.attn_values, preds, self.fluctuations, self.path_pred_variance
+        return metrics, self.attn_values, self.dataset.label_cache, self.fluctuations
 
 
 ########END OF CLASS MODEL#####################################
@@ -446,8 +402,8 @@ def train_DNNModel(cfg):
         model, sess = init_Model(config)
         with sess:
             model.add_summaries(sess)
-            metrics, attn_values, preds, fluctuations, path_pred_variance = model.fit_outer(sess)
-            return metrics, attn_values, preds, fluctuations, path_pred_variance
+            metrics, attn_values, preds, fluctuations = model.fit_outer(sess)
+            return metrics, attn_values, preds, fluctuations
 
 
 def get_argumentparser():
@@ -467,8 +423,8 @@ def get_argumentparser():
     parser.add_argument("--max_depth", default=5, help="Maximum path depth", type=int)
     parser.add_argument("--max_outer", default=2, help="Maximum outer epoch", type=int)
     parser.add_argument("--max_inner", default=1, help="Maximum inner epoch", type=int)
-    parser.add_argument("--pat", default=3, help="Patience", type=int)
-    parser.add_argument("--pat_inc", default=2, help="Patience Increase", type=int)
+    parser.add_argument("--pat", default=10, help="Patience", type=int)
+    parser.add_argument("--pat_inc", default=10, help="Patience Increase", type=int)
     parser.add_argument("--folder_suffix", default='', help="folder name suffix")
 
     parser.add_argument("--batch_size", default=256, help="Batch size", type=int)
@@ -490,7 +446,6 @@ def get_argumentparser():
     parser.add_argument("--drop_out", default=0.75, help="Dropout for pre-final layer", type=float)
 
     parser.add_argument("--ssl", default=0, help="Semi-supervised loss", type=int)
-    parser.add_argument("--inner_converge", default=0, help="Convergence during bootstrap", type=int)
     return parser
 
 
@@ -526,14 +481,13 @@ def main():
         #print("=====Configurations=====\n", cfg.__dict__)
 
         # All set... GO!
-        metrics, attention[idx], preds, fluctuations, path_pred_variance = train_DNNModel(cfg)
+        metrics, attention[idx], preds, fluctuations = train_DNNModel(cfg)
         all_results[cfg.train_percent][cfg.train_fold] = metrics
         print('\n\n ===== Attention \n', attention[idx])
         print('\n\n ===================== \n\n')
 
         np.save(cfg.results_folder+'labels-'+str(cfg.train_percent)+'-'+str(cfg.train_fold), preds)
         np.save(cfg.results_folder+'metrics-fluctuations-'+str(cfg.train_percent)+'-'+str(cfg.train_fold), fluctuations)
-        np.save(cfg.results_folder+'path-variance-'+str(cfg.train_percent)+'-'+str(cfg.train_fold), path_pred_variance)
 
         write_results(cfg, all_results)
         if cfg.mRNN.attention:

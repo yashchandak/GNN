@@ -31,7 +31,6 @@ class DataSet(object):
         self.n_val_nodes = np.sum(self.val_nodes)
         self.n_test_nodes = np.sum(self.test_nodes)
         self.n_nodes = len(self.train_nodes)
-        #self.n_train_nodes -= 1
 
         self.n_features = self.all_features.shape[1]
         self.n_labels = self.all_labels.shape[1]
@@ -81,7 +80,6 @@ class DataSet(object):
 
     def is_multilabel(self):
         sum = np.count_nonzero(self.all_labels[self.train_nodes])
-        print("multilable: ", sum, self.n_train_nodes)#, (np.sum(self.all_labels, axis=1) > 1).any() )
         return sum > self.n_train_nodes
 
     def print_statistics(self):
@@ -254,7 +252,7 @@ class DataSet(object):
 
 
     def sample_DFS_walks(self, node_id, n_walks=1, by_max_degree=False, by_prob=False, max_walks=5):
-        #dist array starts from 0 :/
+        # dist array starts from 0 :/
         walks = np.empty((0, self.diameter + 1), int)
         connected_nodes = np.array(list(self.dist[node_id - 1].keys()), dtype=np.int)
         connected_nodes_depth = np.array(list(self.dist[node_id - 1].values()), dtype=np.int)
@@ -262,36 +260,48 @@ class DataSet(object):
         if by_max_degree:
             immediate_neighbors = connected_nodes[connected_nodes_depth == 1]
             additional_neighbors_reqd = max(0, max_walks - self.degree[node_id])
-            immediate_neighbors = np.append(immediate_neighbors, np.random.choice(immediate_neighbors, size=additional_neighbors_reqd, replace=True))
             p = None
-            for neighbor_id in immediate_neighbors:
-                curr_node = neighbor_id
-                path = [curr_node, node_id - 1]
-
-                while len(path) <= self.diameter:
-                    cn_connected_nodes = np.array(list(self.dist[curr_node].keys()), dtype=np.int)
-                    cn_connected_nodes_depth = np.array(list(self.dist[curr_node].values()), dtype=np.int)
-                    cn_connected_nodes = cn_connected_nodes[cn_connected_nodes_depth == 1]
-                    valid_expanded_neihbors = connected_nodes[connected_nodes_depth == len(path)]
-                    valid_neighbors = np.intersect1d(valid_expanded_neihbors, cn_connected_nodes)
-                    if len(valid_neighbors) != 0:
-                        if by_prob:
-                            numerator = self.degree[valid_neighbors+1]
-                            denominator = sum(numerator)
-                            if denominator != 0:
-                                p = numerator*1.0 / denominator
-                            else:
-                                None
-                        #print(len(path), node_id, curr_node, self.degree[curr_node], valid_neighbors, valid_neighbors.shape)
-                        curr_node = np.random.choice(valid_neighbors, p=p)
-                        path.insert(0,curr_node)
-                    else:
-                        break
+            if immediate_neighbors.shape[0] == 0:
+                path = [node_id-1]
                 arr = np.array(path) + 1
                 npad = (self.diameter + 1) - len(arr)
                 if npad > 0:
                     arr = np.lib.pad(arr, (0, npad), 'constant', constant_values=(0))
                 walks = np.append(walks, arr.reshape(1, self.diameter + 1), axis=0)
+            else:
+                if additional_neighbors_reqd:
+                    immediate_neighbors = np.append(immediate_neighbors,
+                                                    np.random.choice(immediate_neighbors,
+                                                                     size=additional_neighbors_reqd,
+                                                                     replace=True))
+                for neighbor_id in immediate_neighbors:
+                    curr_node = neighbor_id
+                    path = [curr_node, node_id - 1]
+
+                    while len(path) <= self.diameter:
+                        cn_connected_nodes = np.array(list(self.dist[curr_node].keys()), dtype=np.int)
+                        cn_connected_nodes_depth = np.array(list(self.dist[curr_node].values()), dtype=np.int)
+                        cn_connected_nodes = cn_connected_nodes[cn_connected_nodes_depth == 1]
+                        valid_expanded_neihbors = connected_nodes[connected_nodes_depth == len(path)]
+                        valid_neighbors = np.intersect1d(valid_expanded_neihbors, cn_connected_nodes)
+                        if len(valid_neighbors) != 0:
+                            if by_prob:
+                                numerator = self.degree[valid_neighbors + 1]
+                                denominator = sum(numerator)
+                                if denominator != 0:
+                                    p = numerator * 1.0 / denominator
+                                else:
+                                    None
+                            # print(len(path), node_id, curr_node, self.degree[curr_node], valid_neighbors, valid_neighbors.shape)
+                            curr_node = np.random.choice(valid_neighbors, p=p)
+                            path.insert(0, curr_node)
+                        else:
+                            break
+                    arr = np.array(path) + 1
+                    npad = (self.diameter + 1) - len(arr)
+                    if npad > 0:
+                        arr = np.lib.pad(arr, (0, npad), 'constant', constant_values=(0))
+                    walks = np.append(walks, arr.reshape(1, self.diameter + 1), axis=0)
         return walks
 
     def walks_generator(self, data='train', by_max_degree=True, by_prob=True, shuffle=True):
@@ -307,12 +317,13 @@ class DataSet(object):
             x = np.swapaxes(x, 0, 1) # convert from (batch x step) to (step x batch)
 
             temp = np.array(x)>0  #get locations of all zero inputs as binary matrix
-            lengths = self.cfg.max_depth + 1  - np.sum(temp, axis=0)
+            lengths = np.sum(temp, axis=0)
 
             x1 = [[self.all_features[item] for item in row] for row in x] # get features for all data points
             x2 = [[self.label_cache.get(item, self.all_labels[0]) for item in row] for row in x] # get pseudo labels
             y  = [self.all_labels[node_id]]  #get tru labels for Node of interest
 
+            #print(x, lengths)
             yield (x1, x2, y, lengths, node_id)
 
 
